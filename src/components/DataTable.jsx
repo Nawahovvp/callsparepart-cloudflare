@@ -1,5 +1,8 @@
 import React from 'react';
-import { TABLE_COLUMNS as COLUMNS } from '../utils/helpers';
+import { TABLE_COLUMNS } from '../utils/helpers';
+
+const HIDDEN_COLUMN_KEYS = new Set(['StockStartDate', 'Answer1']);
+const COLUMNS = TABLE_COLUMNS.filter(({ key }) => !HIDDEN_COLUMN_KEYS.has(key));
 
 function addTicketGroupClasses(data) {
     let lastTicket = null;
@@ -200,7 +203,6 @@ export default function DataTable({
                                         <td data-column="PendingStockDays" style={{ fontWeight: 'bold', color: 'var(--danger-color)', textAlign: 'center' }}>
                                             {(!row['PendingStockDays'] || row['PendingStockDays'] === "0" || row['PendingStockDays'] === "-") ? "0" : row['PendingStockDays']}
                                         </td>
-                                        <td data-column="StockStartDate">{row['StockStartDate'] === "-" || !row['StockStartDate'] ? "" : row['StockStartDate']}</td>
                                         {/* คลังตอบ */}
                                         <td data-column="คลังตอบ" style={{
                                             color: row['คลังตอบ'] === 'รอตรวจสอบ' ? 'var(--danger-color)' :
@@ -217,7 +219,6 @@ export default function DataTable({
                                         </td>
                                         <td data-column="วันที่ตอบ">{row['วันที่ตอบ']}</td>
                                         <td data-column="UserAns">{row['UserAns']}</td>
-                                        <td data-column="Answer1">{row['Answer1']}</td>
                                         <td data-column="IDPlant">{row['IDPlant']}</td>
                                         {/* Detail */}
                                         <td data-column="detail">
