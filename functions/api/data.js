@@ -74,18 +74,24 @@ function filterSourceData(key, data, materials, tickets) {
 }
 
 export async function getEdgeCache(cacheKey) {
+    const edgeCache = globalThis.caches?.default;
+    if (!edgeCache) return null;
+
     try {
-        return await caches.default.match(cacheKey);
+        return await edgeCache.match(cacheKey);
     } catch (error) {
-        // Cache API can be unavailable in some Pages deployment contexts.
+        // Continue fetching when the platform edge cache is unavailable.
         console.warn('[API] Edge cache read failed; fetching Sheets directly:', error);
         return null;
     }
 }
 
 export function cacheResponse(waitUntil, cacheKey, response) {
+    const edgeCache = globalThis.caches?.default;
+    if (!edgeCache) return;
+
     try {
-        waitUntil(caches.default.put(cacheKey, response.clone()).catch(error => {
+        waitUntil(edgeCache.put(cacheKey, response.clone()).catch(error => {
             console.warn('[API] Edge cache write failed:', error);
         }));
     } catch (error) {
