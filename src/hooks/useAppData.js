@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { fetchAllData, fetchQuickData } from '../services/api';
+import { fetchAllData, fetchQuickData, sendOutsideRequest } from '../services/api';
 import { processRawData, calculateSummary, getCleanTeamPlant, normalizeMaterial, matchesDeptGroup, parseCallCreateDate } from '../utils/helpers';
 import { loadFromCache, saveAllToCache, saveToCache } from '../services/cacheService';
 
@@ -397,8 +397,11 @@ export function useAppData() {
             localStorage.setItem('app_cached_requestQuantities', JSON.stringify(currentCache));
 
             // 1b. Optimistic Update Local Cache (requestQuantities by plant+material)
+            let plantCache;
+            let plantKey;
+            let previousPlantQty;
             if (plant) {
-                let plantCache = {};
+                plantCache = {};
                 try {
                     const plantCacheText = localStorage.getItem('app_cached_requestByPlant');
                     if (plantCacheText) {
@@ -407,17 +410,15 @@ export function useAppData() {
                 } catch (e) {
                     console.error("Error reading plant cache", e);
                 }
-                const plantKey = `${plant}_${localKey}`;
-                plantCache[plantKey] = (plantCache[plantKey] || 0) + localQty;
+                plantKey = `${plant}_${localKey}`;
+                previousPlantQty = plantCache[plantKey] || 0;
+                plantCache[plantKey] = previousPlantQty + localQty;
                 localStorage.setItem('app_cached_requestByPlant', JSON.stringify(plantCache));
             }
 
             // Force refresh of the processed data to reflect the new Request quantity
             // A lightweight way is to re-run the processor on the existing state, but fetchData(false) is safer
             fetchData(false);
-
-            // 2. Background Fetch to GAS
-            const gasUrl = 'https://script.google.com/macros/s/AKfycbycEiGdjEFmLSPSqgBUBBntG0OnaatLTkNozlZTn0RRgZHiuL9HCWisIsmMqth9Dzrv/exec';
 
             // Get current user for logging
             let userStr = '-';
@@ -429,21 +430,18 @@ export function useAppData() {
             }
 
             const logPayload = { ...payload, user: userStr };
-
             try {
-                await fetch(gasUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `action=insertRequest&payload=${encodeURIComponent(JSON.stringify(logPayload))}`
-                });
+                await sendOutsideRequest(logPayload);
                 return true;
-            } catch (err) {
-                console.error("Outside request sync failed:", err);
-                // Even if no-cors fetch fails silently, we gracefully handle it
-                // We do NOT revert optimistic update because no-cors often throws False negatives in modern browsers
-                // Just log it.
-                return true;
+            } catch (error) {
+                currentCache[localKey] = previousQty;
+                localStorage.setItem('app_cached_requestQuantities', JSON.stringify(currentCache));
+                if (plantCache && plantKey) {
+                    plantCache[plantKey] = previousPlantQty;
+                    localStorage.setItem('app_cached_requestByPlant', JSON.stringify(plantCache));
+                }
+                fetchData(false);
+                throw error;
             }
         }
     };

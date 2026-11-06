@@ -114,3 +114,7 @@ async function postJson(url, payload) {
 export function saveToGoogleSheet(payload) {
     return postJson('/api/save', payload);
 }
+
+export function sendOutsideRequest(payload) {
+    return postJson('/api/outside-request', payload);
+}
