@@ -1,25 +1,16 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { getDesc, normalizeMaterial, matchesDeptGroup, DEPT_GROUPS } from '../utils/helpers';
+import React, { useState, useMemo } from 'react';
+import { normalizeMaterial, matchesDeptGroup, DEPT_GROUPS } from '../utils/helpers';
 import { PoDetailsModal, PrDetailsModal, OtherPlantModal } from './TableModals';
-import { syncSummaryToGoogleSheet } from '../services/api';
-import { computeSpareSummaryData, prepareSyncPayload } from '../utils/syncHelpers';
+import { computeSpareSummaryData } from '../utils/syncHelpers';
 
 export default function SpareSummaryPage({ data = [], rawSources = {}, isLoading, onClose }) {
     const [deptGroupFilter, setDeptGroupFilter] = useState('Stock'); // Default to Stock always
     const [prgFilter, setPrgFilter] = useState('');
     const [supplierFilter, setSupplierFilter] = useState('');
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [hasAutoSynced, setHasAutoSynced] = useState(false);
-    const [showSuccessToast, setShowSuccessToast] = useState(false);
 
     const handleDeptGroupChange = (val) => {
         setDeptGroupFilter(val);
         setSupplierFilter('');
-    };
-
-    const handlePrgChange = (val) => {
-        setPrgFilter(val);
-        setSupplierFilter(''); // reset supplier when PRG changes
     };
 
     // Modal states
@@ -73,37 +64,6 @@ export default function SpareSummaryPage({ data = [], rawSources = {}, isLoading
             return true;
         });
     }, [computedData, prgFilter, supplierFilter]);
-
-    const handleSync = async (skipConfirm = false) => {
-        if (!displayRows || displayRows.length === 0) return;
-        if (!skipConfirm && !window.confirm('คุณต้องการอัปเดตข้อมูลรายการนี้ไปยัง Google Sheet ใช่หรือไม่?')) return;
-        
-        setIsSyncing(true);
-        try {
-            const syncData = prepareSyncPayload(computedData);
-            await syncSummaryToGoogleSheet(syncData);
-            setShowSuccessToast(true);
-            setTimeout(() => setShowSuccessToast(false), 4000);
-        } catch (err) {
-            console.error("Sync failed", err);
-            alert('การอัปเดตข้อมูลล้มเหลว: ' + err.message);
-        } finally {
-            setIsSyncing(false);
-        }
-    };
-
-    useEffect(() => {
-        const queryParams = new URLSearchParams(window.location.search);
-        const shouldAutoSync = queryParams.get('autosync') === 'true';
-        
-        if (shouldAutoSync && !isLoading && displayRows.length > 0 && !hasAutoSynced) {
-            const timer = setTimeout(() => {
-                handleSync(true); // true to skip confirm
-                setHasAutoSynced(true);
-            }, 2000);
-            return () => clearTimeout(timer);
-        }
-    }, [isLoading, displayRows, hasAutoSynced]);
 
     if (isLoading && (!data || data.length === 0)) {
         return (
@@ -526,38 +486,6 @@ export default function SpareSummaryPage({ data = [], rawSources = {}, isLoading
                 plantStockData={rawSources.plantStockData}
             />
 
-            {/* Premium success toast */}
-            {showSuccessToast && (
-                <div style={{
-                    position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)',
-                    zIndex: 9999, animation: 'sp-toast-in 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) both'
-                }}>
-                    <div style={{
-                        background: 'rgba(25, 135, 84, 0.95)', backdropFilter: 'blur(10px)',
-                        padding: '16px 28px', borderRadius: '16px', color: '#fff',
-                        display: 'flex', alignItems: 'center', gap: '15px',
-                        boxShadow: '0 15px 35px rgba(0,0,0,0.2), 0 5px 15px rgba(25, 135, 84, 0.3)',
-                        border: '1px solid rgba(255,255,255,0.2)'
-                    }}>
-                        <div style={{
-                            width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                            <i className="fas fa-check" style={{ fontSize: '16px' }}></i>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontWeight: 700, fontSize: '15px', letterSpacing: '0.3px' }}>อัปเดตข้อมูลสำเร็จ!</span>
-                            <span style={{ fontSize: '12px', opacity: 0.9 }}>ข้อมูลถูกส่งไปยัง Google Sheet เรียบร้อยแล้ว</span>
-                        </div>
-                    </div>
-                    <style>{`
-                        @keyframes sp-toast-in {
-                            from { transform: translate(-50%, 100px); opacity: 0; }
-                            to { transform: translate(-50%, 0); opacity: 1; }
-                        }
-                    `}</style>
-                </div>
-            )}
         </div>
     );
 }

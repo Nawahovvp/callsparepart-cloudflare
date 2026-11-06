@@ -525,6 +525,8 @@
     td[data-column="PO"],
     th[data-column="Nawa"],
     td[data-column="Nawa"],
+    th[data-column="จำนวน"],
+    td[data-column="จำนวน"],
     th[data-column="Vipa"],
     td[data-column="Vipa"],
     th[data-column="Request"],
@@ -2229,6 +2231,10 @@
 
     .spare-card {
       background: linear-gradient(135deg, #28a745, #20c09d);
+    }
+
+    .gm-summary-card {
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
     }
 
     .calltype-p-card {

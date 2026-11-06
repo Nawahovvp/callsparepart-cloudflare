@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 
 export default function AppHeader({ user, onLogout, lastUpdated, showGMCard, setShowGMCard, hideDeptCards, onToggleHideDeptCards }) {
     const [showQuickSettings, setShowQuickSettings] = useState(false);
-    const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
     const popoverRef = useRef(null);
     const buttonRef = useRef(null);
 

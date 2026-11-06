@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { fetchAllData } from '../services/api';
-import { processRawData, calculateSummary, getCleanTeamPlant, normalizeMaterial, matchesDeptGroup } from '../utils/helpers';
-import { loadAllFromCache, saveAllToCache } from '../services/cacheService';
+import { fetchAllData, fetchQuickData } from '../services/api';
+import { processRawData, calculateSummary, getCleanTeamPlant, normalizeMaterial, matchesDeptGroup, parseCallCreateDate } from '../utils/helpers';
+import { loadAllFromCache, loadFromCache, saveAllToCache, saveToCache } from '../services/cacheService';
 
 export function useAppData() {
     const [processedData, setProcessedData] = useState([]);
@@ -25,44 +25,29 @@ export function useAppData() {
 
     const hasCacheLoaded = useRef(false);
     const inFlightFetch = useRef(null);
+    const fetchGeneration = useRef(0);
 
     // Process fetched data (shared between cache load and server load)
     const applyData = useCallback((fetchResult, saveCache = false) => {
         const {
             mainData, requestData, poData, prData, mainSapData,
             vipaData, nawaData, plantStockData, newPartData,
-            projectData, updateData, teamPlantData, engData
+            projectData, teamPlantData, engData
         } = fetchResult;
 
         // Skip processing if essential data is missing (e.g., empty cache)
         if (!mainData || mainData.length === 0) return false;
 
-        const now = new Date();
-        let latestUpdateStr = now.toLocaleString('th-TH');
-
-        if (Array.isArray(updateData) && updateData.length > 0) {
-            const dates = updateData
-                .map(row => row.Date)
-                .filter(d => d)
-                .map(d => {
-                    const parts = d.split('/');
-                    if (parts.length === 3) {
-                        let day = parseInt(parts[0], 10);
-                        let month = parseInt(parts[1], 10) - 1;
-                        let year = parseInt(parts[2], 10);
-                        if (year < 2500) year += 543;
-                        return { original: d, date: new Date(year > 2500 ? year - 543 : year, month, day) };
-                    }
-                    return null;
-                })
-                .filter(item => item && !isNaN(item.date.getTime()));
-
-            if (dates.length > 0) {
-                const maxItem = dates.reduce((max, curr) => curr.date > max.date ? curr : max, dates[0]);
-                latestUpdateStr = maxItem.original;
-            }
-        }
-        setLastUpdated(latestUpdateStr);
+        const latestUpdate = Array.isArray(mainData)
+            ? mainData.reduce((latest, row) => {
+                const value = row?.['วันที่อัปเดต'];
+                const date = parseCallCreateDate(value);
+                return date && (!latest || date > latest.date)
+                    ? { date, value: String(value).trim() }
+                    : latest;
+            }, null)
+            : null;
+        setLastUpdated(latestUpdate?.value || null);
 
         const processed = processRawData(
             mainData, requestData, poData, prData, mainSapData,
@@ -74,11 +59,11 @@ export function useAppData() {
 
         // Save ALL sources to cache for instant load next time
         if (saveCache) {
-            saveAllToCache({ 
+            saveAllToCache({
                 mainData, requestData, poData, prData, mainSapData, 
                 vipaData, nawaData, plantStockData, newPartData, 
-                projectData, updateData, teamPlantData, engData 
-            });
+                projectData, teamPlantData, engData
+                });
         }
 
         localStorage.removeItem('app_cached_requestQuantities');
@@ -93,12 +78,31 @@ export function useAppData() {
 
         if (showLoading) setIsLoading(true);
         setError(null);
+        const generation = ++fetchGeneration.current;
         const request = (async () => {
             try {
+                try {
+                    const quickResult = await fetchQuickData();
+                    if (fetchGeneration.current !== generation) return;
+                    applyData(quickResult, false);
+                    void saveToCache('quickData', {
+                        mainData: quickResult.mainData,
+                        requestData: quickResult.requestData,
+                        vipaData: quickResult.vipaData,
+                        nawaData: quickResult.nawaData
+                    });
+                    if (showLoading) setIsLoading(false);
+                } catch (quickError) {
+                    console.warn('[API] Quick data fetch failed; falling back to full data:', quickError);
+                }
+
                 const result = await fetchAllData();
-                const applied = applyData(result, true);
-                if (!applied && showLoading) {
-                    setError('ไม่สามารถดึงข้อมูลจากเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง');
+                if (fetchGeneration.current === generation) {
+                    const applied = applyData(result, true);
+                    if (!applied) {
+                        setError('ไม่สามารถดึงข้อมูลจากเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง');
+                    }
+                    if (showLoading) setIsLoading(false);
                 }
             } catch (err) {
                 console.error(err);
@@ -128,8 +132,26 @@ export function useAppData() {
                     setIsLoading(false); // Hide spinner early if we have cached data
                     fetchData(false);    // Background refresh
                 } else {
-                    console.log("[Cache-First] No valid cache found, performing initial server fetch...");
-                    fetchData(true);     // Initial server fetch with spinner
+                    const quickData = await loadFromCache('quickData');
+                    if (quickData?.mainData?.length) {
+                        applyData({
+                            ...quickData,
+                            poData: [],
+                            prData: [],
+                            mainSapData: [],
+                            plantStockData: [],
+                            newPartData: [],
+                            projectData: [],
+                            teamPlantData: [],
+                            engData: []
+                        }, false);
+                        console.log("[Cache-First] UI populated from quick stock cache; fetching fresh data in background...");
+                        setIsLoading(false);
+                        fetchData(false);
+                    } else {
+                        console.log("[Cache-First] No valid cache found, performing initial server fetch...");
+                        fetchData(true);
+                    }
                 }
             } catch (err) {
                 console.warn("[Cache-First] Failed to initialize from cache:", err);
@@ -239,7 +261,7 @@ export function useAppData() {
             deptGroupStats: deptSummary.deptGroupStats, // Dept group cards from all-dept data
             callTypeStats: callTypeSummary.callTypeStats // Call Type cards from fully filtered data
         };
-    }, [getFilteredData, baseFilteredData, filteredData]);
+    }, [getFilteredData, baseFilteredData, applyDashboardFilter, dashboardFilter]);
 
     // Cross-filtered data for each filter panel
     const teamPlantFilterData = useMemo(() => applyDashboardFilter(getFilteredData('teamPlant'), dashboardFilter), [getFilteredData, dashboardFilter, applyDashboardFilter]);
@@ -305,11 +327,6 @@ export function useAppData() {
                     else if (ticketRows.some(r => r.StatusX === "แจ้งCodeผิด")) newStatusCall = "แจ้งCodeผิด";
 
                     if (newStatusCall === "รอของเข้า" || newStatusCall === "ดึงจากคลังอื่น") {
-                        const hasOtherPlant = validRows.some(r => {
-                            const op = r["OtherPlant"];
-                            return r.StatusX === "ดึงจากคลังอื่น" || (op !== undefined && op !== null && op !== "" && op !== "-" && op !== 0 && op !== "0");
-                        });
-
                         const allOtherPlant = validRows.every(r => {
                             const op = r["OtherPlant"];
                             return r.StatusX === "ดึงจากคลังอื่น" || (op !== undefined && op !== null && op !== "" && op !== "-" && op !== 0 && op !== "0");
@@ -415,7 +432,9 @@ export function useAppData() {
             try {
                 const u = JSON.parse(localStorage.getItem('user'));
                 userStr = u?.Name || u?.IDRec || '-';
-            } catch (e) {}
+            } catch (error) {
+                console.error('Unable to read the saved user for request logging:', error);
+            }
 
             const logPayload = { ...payload, user: userStr };
 

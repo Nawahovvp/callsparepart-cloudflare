@@ -7,17 +7,20 @@ const DB_NAME = 'AppDataCache';
 const DB_VERSION = 1;
 const STORE_NAME = 'dataCache';
 const DEFAULT_MAX_AGE = 30 * 60 * 1000; // 30 minutes
+let dbPromise;
 
 export const CACHEABLE_KEYS = [
     'mainData', 'requestData', 'poData', 'prData', 'mainSapData', 
     'vipaData', 'nawaData', 'plantStockData', 'newPartData', 
-    'projectData', 'updateData', 'teamPlantData', 'engData'
+    'projectData', 'teamPlantData', 'engData'
 ];
 
 // --- IndexedDB helpers ---
 
 function openDB() {
-    return new Promise((resolve, reject) => {
+    if (dbPromise) return dbPromise;
+
+    dbPromise = new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         request.onupgradeneeded = (e) => {
             const db = e.target.result;
@@ -25,9 +28,19 @@ function openDB() {
                 db.createObjectStore(STORE_NAME, { keyPath: 'key' });
             }
         };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            request.result.onversionchange = () => {
+                request.result.close();
+                dbPromise = null;
+            };
+            resolve(request.result);
+        };
+        request.onerror = () => {
+            dbPromise = null;
+            reject(request.error);
+        };
     });
+    return dbPromise;
 }
 
 function idbGet(db, key) {
@@ -40,6 +53,15 @@ function idbGet(db, key) {
     });
 }
 
+function idbGetAll(db) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const req = tx.objectStore(STORE_NAME).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+    });
+}
+
 function idbPut(db, key, data) {
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -47,6 +69,17 @@ function idbPut(db, key, data) {
         const req = store.put({ key, timestamp: Date.now(), data });
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
+    });
+}
+
+function idbPutMany(db, entries) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        entries.forEach(({ key, data }) => store.put({ key, timestamp: Date.now(), data }));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
     });
 }
 
@@ -97,8 +130,24 @@ export async function loadFromCache(key, options = {}) {
  */
 export async function loadAllFromCache(options = { allowStale: true }) {
     const result = {};
-    for (const key of CACHEABLE_KEYS) {
-        result[key] = await loadFromCache(key, options);
+    try {
+        const { maxAgeMs = DEFAULT_MAX_AGE, allowStale = true } =
+            typeof options === 'number' ? { maxAgeMs: options, allowStale: false } : options;
+        const db = await openDB();
+        const entries = new Map((await idbGetAll(db)).map(entry => [entry.key, entry]));
+
+        for (const key of CACHEABLE_KEYS) {
+            const entry = entries.get(key);
+            if (!entry || !entry.data) {
+                result[key] = null;
+                continue;
+            }
+            const age = Date.now() - (entry.timestamp || 0);
+            result[key] = !allowStale && age > maxAgeMs ? null : entry.data;
+        }
+    } catch (e) {
+        console.warn('[Cache] Failed to load all data:', e);
+        for (const key of CACHEABLE_KEYS) result[key] = null;
     }
     return result;
 }
@@ -108,21 +157,30 @@ export async function loadAllFromCache(options = { allowStale: true }) {
  * Guards against overwriting existing valid cache with empty arrays from failed fetches.
  */
 export async function saveAllToCache(data) {
-    for (const key of CACHEABLE_KEYS) {
-        const val = data[key];
-        if (val !== undefined && val !== null) {
-            // Guard: Do not overwrite populated cache with an empty array
-            if (Array.isArray(val) && val.length === 0) {
-                try {
-                    const db = await openDB();
-                    const existing = await idbGet(db, key);
-                    if (existing && existing.data && Array.isArray(existing.data) && existing.data.length > 0) {
-                        console.log(`[Cache] Skipping save for empty ${key} to preserve existing cache`);
-                        continue;
-                    }
-                } catch (e) {}
+    try {
+        const db = await openDB();
+        const existingEntries = new Map((await idbGetAll(db)).map(entry => [entry.key, entry]));
+        const entriesToSave = [];
+
+        for (const key of CACHEABLE_KEYS) {
+            const value = data[key];
+            if (value === undefined || value === null) continue;
+
+            const existing = existingEntries.get(key);
+            if (
+                Array.isArray(value) &&
+                value.length === 0 &&
+                Array.isArray(existing?.data) &&
+                existing.data.length > 0
+            ) {
+                console.log(`[Cache] Skipping save for empty ${key} to preserve existing cache`);
+                continue;
             }
-            await saveToCache(key, val);
+            entriesToSave.push({ key, data: value });
         }
+
+        await idbPutMany(db, entriesToSave);
+    } catch (error) {
+        console.warn('[Cache] Failed to save all data:', error);
     }
 }

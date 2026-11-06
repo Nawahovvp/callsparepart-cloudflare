@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import './index.css';
 
 // Components
@@ -9,15 +9,27 @@ import AnalyticsCards from './components/AnalyticsCards';
 import GroupCards from './components/GroupCards';
 import ControlPanel from './components/ControlPanel';
 import DataTable from './components/DataTable';
-import { DetailModal, ActionModal, GraphModal, SummaryModal, SpareSummaryModal, OutsideRequestModal, StickerModal, printStickers, UpdateGuideModal } from './components/Modals';
-import { PoDetailsModal, PrDetailsModal, OtherPlantModal, StatusEditModal, ProjectModal, TimelineModal, EngDetailsModal } from './components/TableModals';
-
 import { useAppData } from './hooks/useAppData';
 import { PLANT_MAPPING, exportToCSV } from './utils/helpers';
-import { syncSummaryToGoogleSheet } from './services/api';
-import { computeSpareSummaryData, prepareSyncPayload } from './utils/syncHelpers';
-import SpareSummaryPage from './components/SpareSummaryPage';
-import GMSummaryPage from './components/GMSummaryPage';
+
+const lazyNamed = (loadModule, exportName) =>
+  lazy(() => loadModule().then((module) => ({ default: module[exportName] })));
+
+const GraphModal = lazyNamed(() => import('./components/Modals'), 'GraphModal');
+const SummaryModal = lazyNamed(() => import('./components/Modals'), 'SummaryModal');
+const SpareSummaryModal = lazyNamed(() => import('./components/Modals'), 'SpareSummaryModal');
+const OutsideRequestModal = lazyNamed(() => import('./components/Modals'), 'OutsideRequestModal');
+const StickerModal = lazyNamed(() => import('./components/Modals'), 'StickerModal');
+const UpdateGuideModal = lazyNamed(() => import('./components/Modals'), 'UpdateGuideModal');
+const PoDetailsModal = lazyNamed(() => import('./components/TableModals'), 'PoDetailsModal');
+const PrDetailsModal = lazyNamed(() => import('./components/TableModals'), 'PrDetailsModal');
+const OtherPlantModal = lazyNamed(() => import('./components/TableModals'), 'OtherPlantModal');
+const StatusEditModal = lazyNamed(() => import('./components/TableModals'), 'StatusEditModal');
+const ProjectModal = lazyNamed(() => import('./components/TableModals'), 'ProjectModal');
+const TimelineModal = lazyNamed(() => import('./components/TableModals'), 'TimelineModal');
+const EngDetailsModal = lazyNamed(() => import('./components/TableModals'), 'EngDetailsModal');
+const SpareSummaryPage = lazy(() => import('./components/SpareSummaryPage'));
+const GMSummaryPage = lazy(() => import('./components/GMSummaryPage'));
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -38,7 +50,6 @@ function App() {
         const twentyFourHours = 24 * 60 * 60 * 1000;
 
         if (now - loginTime > twentyFourHours) {
-          // Session expired
           localStorage.removeItem('user');
           setIsLoggedIn(false);
           setCurrentUser(null);
@@ -46,7 +57,7 @@ function App() {
           setCurrentUser(cachedUser);
           setIsLoggedIn(true);
         }
-      } catch (e) {
+      } catch {
         localStorage.removeItem('user');
       }
     }
@@ -55,7 +66,6 @@ function App() {
   const {
     data,
     allData,
-    baseFilteredData,
     isLoading,
     error,
     lastUpdated,
@@ -71,39 +81,11 @@ function App() {
     gmFilter, setGmFilter,
     deptGroupFilter, setDeptGroupFilter,
     engData,
-    applyDashboardFilter,
     refreshData,
     refreshDataBackground,
     updateRowLocally,
     handleOutsideRequest
   } = useAppData();
-
-  const [showSyncSuccess, setShowSyncSuccess] = useState(false);
-  const [hasAutoSynced, setHasAutoSynced] = useState(false);
-
-  // Background Auto-Sync logic (Happens once per session after data is loaded)
-  useEffect(() => {
-    if (!isLoading && data.length > 0 && !hasAutoSynced) {
-      const runSync = async () => {
-        try {
-          const computed = computeSpareSummaryData(data, rawSources);
-          if (computed) {
-            const syncPayload = prepareSyncPayload(computed);
-            await syncSummaryToGoogleSheet(syncPayload);
-            setShowSyncSuccess(true);
-            setHasAutoSynced(true);
-            setTimeout(() => setShowSyncSuccess(false), 5000);
-          }
-        } catch (err) {
-          console.error("Background sync failed", err);
-        }
-      };
-
-      // Slight delay to ensure data is settled after initial load
-      const timer = setTimeout(runSync, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, data, rawSources, hasAutoSynced]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -278,7 +260,6 @@ function App() {
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : {};
     const userPlant = user.Plant || localStorage.getItem('userPlant') || '';
-
     const pendingUnit = row["ค้างหน่วยงาน"] ? row["ค้างหน่วยงาน"].toString().trim() : '';
     const requiredPlant = PLANT_MAPPING[pendingUnit];
 
@@ -329,22 +310,25 @@ function App() {
 
   if (currentPagePath === 'spare-summary') {
     return (
-      <SpareSummaryPage
-        data={data}
-        rawSources={rawSources}
-        isLoading={isLoading}
-        onClose={() => window.close()}
-      />
+      <Suspense fallback={null}>
+        <SpareSummaryPage
+          data={data}
+          rawSources={rawSources}
+          isLoading={isLoading}
+          onClose={() => window.close()}
+        />
+      </Suspense>
     );
   }
 
   if ((currentPagePath === 'gm-summary' || gmSummaryOpen) && currentUser?.Status === 'Admin') {
     return (
-      <GMSummaryPage
-        data={allData}
-        summary={summary}
-        onClose={() => setGmSummaryOpen(false)}
-      />
+      <Suspense fallback={null}>
+        <GMSummaryPage
+          data={allData}
+          onClose={() => setGmSummaryOpen(false)}
+        />
+      </Suspense>
     );
   }
 
@@ -370,6 +354,19 @@ function App() {
           setShowGMCard={setShowGMCard}
           hideDeptCards={hideDeptCards}
           onToggleHideDeptCards={handleToggleHideDeptCards} />
+
+          {error && (
+            <div role="alert" style={{
+              margin: '12px 20px',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              color: '#842029',
+              background: '#f8d7da',
+              border: '1px solid #f5c2c7'
+            }}>
+              {error}
+            </div>
+          )}
 
           {isLoading ? (
             <div style={{
@@ -536,32 +533,33 @@ function App() {
                 activeCard={dashboardFilter}
               />
 
-              <GroupCards
-                stats={summary.callTypeStats}
-                onCardClick={handleDashboardClick}
-                activeFilter={dashboardFilter}
-                prefix="calltype_"
-              >
-                <AnalyticsCards
-                  data={summary}
-                  onOpenGraph={() => setGraphOpen(true)}
-                  onOpenSpareSummary={() => window.open('?page=spare-summary&autosync=true', '_blank')}
-                  onOver7Click={handleOver7Click}
-                  onWaitingResponseClick={handleWaitingResponseClick}
-                  onMaxCardClick={handleMaxCardClick}
-                  dashboardFilter={dashboardFilter}
-                  isAdmin={currentUser?.Status === 'Admin'}
-                />
-              </GroupCards>
+              <AnalyticsCards
+                data={summary}
+                onOpenGraph={() => setGraphOpen(true)}
+                onOpenSpareSummary={() => window.open('?page=spare-summary', '_blank')}
+                onOver7Click={handleOver7Click}
+                onWaitingResponseClick={handleWaitingResponseClick}
+                onMaxCardClick={handleMaxCardClick}
+                dashboardFilter={dashboardFilter}
+                callTypeStats={summary.callTypeStats}
+                onCallTypeClick={handleDashboardClick}
+                isAdmin={currentUser?.Status === 'Admin'}
+              />
 
               <ControlPanel
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
                 onSearch={() => setCurrentPage(1)}
-                onPrintTable={() => {
+                onPrintTable={async () => {
                   if (selectedRows.length > 0) {
                     const selectedData = allData.filter(r => selectedRows.includes(r.id));
-                    printStickers(selectedData);
+                    try {
+                      const { printStickers } = await import('./utils/stickerPrint');
+                      await printStickers(selectedData);
+                    } catch (error) {
+                      console.error('Sticker printing failed:', error);
+                      alert('ไม่สามารถพิมพ์สติกเกอร์ได้');
+                    }
                   } else {
                     window.print();
                   }
@@ -612,146 +610,141 @@ function App() {
             </>
           )}
 
-          <GraphModal
-            isOpen={graphOpen}
-            onClose={() => setGraphOpen(false)}
-            data={data}
-            onFilterPendingUnit={(unit) => {
-              setPendingUnitFilter(unit);
-              setTeamPlantFilter('');
-              setStockAnswerFilter('');
-              setStatusCallFilter('');
-              setSearchTerm('');
-              setDashboardFilter(null);
-              setCurrentPage(1);
-            }}
-          />
-          <SummaryModal
-            isOpen={summaryOpen}
-            onClose={() => setSummaryOpen(false)}
-            data={data}
-          />
-          <SpareSummaryModal
-            isOpen={spareSummaryOpen}
-            onClose={() => setSpareSummaryOpen(false)}
-            data={data}
-            rawSources={rawSources}
-            isLoading={isLoading}
-          />
+          <Suspense fallback={null}>
+            {graphOpen && (
+              <GraphModal
+                isOpen
+                onClose={() => setGraphOpen(false)}
+                data={data}
+                onFilterPendingUnit={(unit) => {
+                  setPendingUnitFilter(unit);
+                  setTeamPlantFilter('');
+                  setStockAnswerFilter('');
+                  setStatusCallFilter('');
+                  setSearchTerm('');
+                  setDashboardFilter(null);
+                  setCurrentPage(1);
+                }}
+              />
+            )}
+            {summaryOpen && (
+              <SummaryModal
+                isOpen
+                onClose={() => setSummaryOpen(false)}
+                data={data}
+              />
+            )}
+            {spareSummaryOpen && (
+              <SpareSummaryModal
+                isOpen
+                onClose={() => setSpareSummaryOpen(false)}
+                data={data}
+                rawSources={rawSources}
+                isLoading={isLoading}
+              />
+            )}
 
-          {/* Table interaction modals */}
-          <PoDetailsModal
-            isOpen={poModal.open}
-            onClose={() => setPoModal({ open: false, row: null })}
-            material={poModal.row?.["Material"]}
-            description={poModal.row?.["Description"] || poModal.row?.["Discription"] || ""}
-            poRawData={rawSources.poRawData}
-            nawaRawData={rawSources.nawaRawData}
-          />
-          <PrDetailsModal
-            isOpen={prModal.open}
-            onClose={() => setPrModal({ open: false, row: null })}
-            material={prModal.row?.["Material"]}
-            description={prModal.row?.["Description"] || prModal.row?.["Discription"] || ""}
-            prRawData={rawSources.prRawData}
-          />
-          <OtherPlantModal
-            isOpen={otherPlantModal.open}
-            onClose={() => setOtherPlantModal({ open: false, row: null })}
-            material={otherPlantModal.row?.["Material"]}
-            description={otherPlantModal.row?.["Description"] || otherPlantModal.row?.["Discription"] || ""}
-            plantStockData={rawSources.plantStockData}
-          />
-          <OtherPlantModal
-            isOpen={rebuiltModal.open}
-            onClose={() => setRebuiltModal({ open: false, row: null })}
-            material={rebuiltModal.row?.["Rebuilt"]}
-            description={rebuiltModal.row?.["RebuiltDescription"] || ""}
-            plantStockData={rawSources.plantStockData}
-            title="รายละเอียดพื้นที่อื่น (อะไหล่ทดแทน)"
-          />
-          <StatusEditModal
-            isOpen={statusEditModal.open}
-            onClose={() => setStatusEditModal({ open: false, row: null })}
-            row={statusEditModal.row}
-            allData={allData}
-            onSaved={handleStatusEditSaved}
-            currentUser={currentUser}
-          />
-          <ProjectModal
-            isOpen={spacialModal.open}
-            onClose={() => setSpacialModal({ open: false, row: null })}
-            row={spacialModal.row}
-            onSaved={handleSpacialSaved}
-            currentUser={currentUser}
-          />
-          <TimelineModal
-            isOpen={timelineModal.open}
-            onClose={() => setTimelineModal({ open: false, row: null })}
-            row={timelineModal.row}
-          />
-          <OutsideRequestModal
-            isOpen={outsideRequestModal.open}
-            onClose={() => setOutsideRequestModal({ open: false, row: null })}
-            row={outsideRequestModal.row}
-            onSubmit={async (payload) => {
-              try {
-                await handleOutsideRequest(payload);
-                // Note: The modal closure is now handled inside Modals.jsx
-                // to allow for the success animation to play before closing.
-              } catch (err) {
-                alert('ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
-                throw err;
-              }
-            }}
-          />
-          <StickerModal
-            isOpen={stickerModal.open}
-            onClose={() => setStickerModal({ open: false, row: null })}
-            row={stickerModal.row}
-          />
-          <EngDetailsModal
-            isOpen={engModal.open}
-            onClose={() => setEngModal({ open: false, row: null })}
-            row={engModal.row}
-            engData={engData}
-          />
-          <UpdateGuideModal
-            isOpen={updateGuideOpen}
-            onClose={() => setUpdateGuideOpen(false)}
-          />
-        </div>
-      )}
-      {/* Auto-Sync Success Toast */}
-      {showSyncSuccess && (
-        <div style={{
-          position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)',
-          zIndex: 9999, animation: 'sync-toast-in 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) both'
-        }}>
-          <div style={{
-            background: 'rgba(25, 135, 84, 0.95)', backdropFilter: 'blur(10px)',
-            padding: '16px 28px', borderRadius: '16px', color: '#fff',
-            display: 'flex', alignItems: 'center', gap: '15px',
-            boxShadow: '0 15px 35px rgba(0,0,0,0.2), 0 5px 15px rgba(25, 135, 84, 0.3)',
-            border: '1px solid rgba(255,255,255,0.2)'
-          }}>
-            <div style={{
-              width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <i className="fas fa-check" style={{ fontSize: '16px' }}></i>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontWeight: 700, fontSize: '15px', letterSpacing: '0.3px' }}>Auto-Sync สำเร็จ!</span>
-              <span style={{ fontSize: '12px', opacity: 0.9 }}>ข้อมูลสรุปถูกอัปเดตไปยัง Google Sheet เรียบร้อยแล้ว</span>
-            </div>
-          </div>
-          <style>{`
-            @keyframes sync-toast-in {
-              from { transform: translate(-50%, 100px); opacity: 0; }
-              to { transform: translate(-50%, 0); opacity: 1; }
-            }
-          `}</style>
+            {poModal.open && (
+              <PoDetailsModal
+                isOpen
+                onClose={() => setPoModal({ open: false, row: null })}
+                material={poModal.row?.["Material"]}
+                description={poModal.row?.["Description"] || poModal.row?.["Discription"] || ""}
+                poRawData={rawSources.poRawData}
+                nawaRawData={rawSources.nawaRawData}
+              />
+            )}
+            {prModal.open && (
+              <PrDetailsModal
+                isOpen
+                onClose={() => setPrModal({ open: false, row: null })}
+                material={prModal.row?.["Material"]}
+                description={prModal.row?.["Description"] || prModal.row?.["Discription"] || ""}
+                prRawData={rawSources.prRawData}
+              />
+            )}
+            {otherPlantModal.open && (
+              <OtherPlantModal
+                isOpen
+                onClose={() => setOtherPlantModal({ open: false, row: null })}
+                material={otherPlantModal.row?.["Material"]}
+                description={otherPlantModal.row?.["Description"] || otherPlantModal.row?.["Discription"] || ""}
+                plantStockData={rawSources.plantStockData}
+              />
+            )}
+            {rebuiltModal.open && (
+              <OtherPlantModal
+                isOpen
+                onClose={() => setRebuiltModal({ open: false, row: null })}
+                material={rebuiltModal.row?.["Rebuilt"]}
+                description={rebuiltModal.row?.["RebuiltDescription"] || ""}
+                plantStockData={rawSources.plantStockData}
+                title="รายละเอียดพื้นที่อื่น (อะไหล่ทดแทน)"
+              />
+            )}
+            {statusEditModal.open && (
+              <StatusEditModal
+                isOpen
+                onClose={() => setStatusEditModal({ open: false, row: null })}
+                row={statusEditModal.row}
+                allData={allData}
+                onSaved={handleStatusEditSaved}
+                currentUser={currentUser}
+              />
+            )}
+            {spacialModal.open && (
+              <ProjectModal
+                isOpen
+                onClose={() => setSpacialModal({ open: false, row: null })}
+                row={spacialModal.row}
+                onSaved={handleSpacialSaved}
+                currentUser={currentUser}
+              />
+            )}
+            {timelineModal.open && (
+              <TimelineModal
+                isOpen
+                onClose={() => setTimelineModal({ open: false, row: null })}
+                row={timelineModal.row}
+              />
+            )}
+            {outsideRequestModal.open && (
+              <OutsideRequestModal
+                isOpen
+                onClose={() => setOutsideRequestModal({ open: false, row: null })}
+                row={outsideRequestModal.row}
+                onSubmit={async (payload) => {
+                  try {
+                    await handleOutsideRequest(payload);
+                  } catch (err) {
+                    alert('ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+                    throw err;
+                  }
+                }}
+              />
+            )}
+            {stickerModal.open && (
+              <StickerModal
+                isOpen
+                onClose={() => setStickerModal({ open: false, row: null })}
+                row={stickerModal.row}
+              />
+            )}
+            {engModal.open && (
+              <EngDetailsModal
+                isOpen
+                onClose={() => setEngModal({ open: false, row: null })}
+                row={engModal.row}
+                engData={engData}
+              />
+            )}
+            {updateGuideOpen && (
+              <UpdateGuideModal
+                isOpen
+                onClose={() => setUpdateGuideOpen(false)}
+              />
+            )}
+          </Suspense>
         </div>
       )}
     </>

@@ -1,16 +1,23 @@
-# React + Vite
+# Sparepart Call
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React/Vite dashboard with Cloudflare Pages Functions. Google Sheets remains the source of truth; Pages Functions provide a same-origin API, combine data requests, and cache the combined response at Cloudflare's edge.
 
-Currently, two official plugins are available:
+## Deploy with the Cloudflare dashboard
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1. Push this repository to GitHub and open **Workers & Pages** in the Cloudflare dashboard.
+2. Select **Create application > Pages > Connect to Git**, then select the repository.
+3. Use `npm run build` as the build command and `dist` as the build output directory.
+4. Add these variables under **Settings > Variables and Secrets** for production:
+   - `NEW_PART_SAVE_URL`: the Google Apps Script `/exec` URL that handles status/project saves.
+   - `LOGIN_LOG_URL`: the Google Apps Script `/exec` URL that accepts login events (optional).
+5. Deploy. Pages discovers the API handlers under `functions/api/` automatically.
 
-## React Compiler
+The source sheet URLs are defined in `functions/api/data.js`; the main call list comes from the `CallMaterial` sheet in the configured spreadsheet. The API returns all dashboard datasets in one request and caches the combined response at the edge for up to five minutes. The browser's IndexedDB cache remains available as a fallback.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Local development
 
-## Expanding the ESLint configuration
+Run `npm install` and `npm run dev` for the Vite frontend. Pages API routes are available in Cloudflare's local Pages runtime; to test them locally, run `npm run build`, then `npx wrangler pages dev dist` from the repository root. Add the endpoint URLs to a local `.dev.vars` file to test writes; keep that file out of Git.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Important security note
+
+The existing employee password rule (the last four digits of the employee ID) is retained for compatibility; it is not suitable for strong authentication. The login endpoint only preserves the current UI gate and does not provide authorization for the publicly available sheet data or write endpoints. Protect the Pages app and write APIs with Cloudflare Access or implement real authentication before treating the dashboard as a secure system. Do not put Apps Script endpoint URLs in frontend code; configure them as Pages secrets/variables.

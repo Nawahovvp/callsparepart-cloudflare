@@ -20,16 +20,6 @@ export function PoDetailsModal({ isOpen, onClose, material, description, poRawDa
         const mat = normalizeMaterial(material);
         if (!poRawData || poRawData.length === 0) return [];
 
-        // Parse leadtime from nawaRawData for this material
-        let leadtimeDays = 0;
-        if (Array.isArray(nawaRawData)) {
-            const nMatch = nawaRawData.find(r => normalizeMaterial(r["Material"] || "") === mat);
-            if (nMatch && nMatch["Planned Deliv. Time"]) {
-                const parsedLT = parseInt(nMatch["Planned Deliv. Time"], 10);
-                if (!isNaN(parsedLT)) leadtimeDays = parsedLT;
-            }
-        }
-
         const parseDelivDate = (row) => {
             const dateStr = row["Document Date"] || row["Date"] || row["Delivery Date"] || row["Deliv.Date"] || "";
             if (!dateStr) return Infinity;
@@ -61,7 +51,7 @@ export function PoDetailsModal({ isOpen, onClose, material, description, poRawDa
                 return rMat === mat && !isNaN(qty) && qty > 0;
             })
             .sort((a, b) => parseDelivDate(a) - parseDelivDate(b));
-    }, [isOpen, material, poRawData, nawaRawData]);
+    }, [isOpen, material, poRawData]);
 
     const leadtime = useMemo(() => {
         if (!material || !nawaRawData) return "-";
@@ -131,8 +121,6 @@ export function PoDetailsModal({ isOpen, onClose, material, description, poRawDa
 
                                             if (d && !isNaN(d.getTime())) {
                                                 d.setHours(0, 0, 0, 0);
-                                                const leadtimeVal = parseInt(leadtime, 10);
-                                                const leadtimeDays = isNaN(leadtimeVal) ? 0 : leadtimeVal;
                                                 const deliveryDate = new Date(d);
                                                 // deliveryDate.setDate(deliveryDate.getDate() + leadtimeDays);
                                                 
@@ -387,7 +375,7 @@ export function OtherPlantModal({ isOpen, onClose, material, description, plantS
         });
 
         const sorted = Object.entries(grouped)
-            .filter(([_, qty]) => qty > 0)
+            .filter(([, qty]) => qty > 0)
             .map(([plantCode, qty]) => ({
                 plantCode,
                 displayName: REVERSE_PLANT_MAP[plantCode] || plantCode,
@@ -688,7 +676,7 @@ export function ProjectModal({ isOpen, onClose, row, onSaved, currentUser }) {
 // ===== Timeline Modal (ดูรายละเอียด) =====
 function parseTimeline(timeline) {
     if (!timeline) return [];
-    const events = timeline.split('|');
+    const events = timeline.split(/\||\r?\n/);
     const rows = [];
     let previousDateObj = null;
     let previousPendingUnitStr = '-';
@@ -810,10 +798,9 @@ function parseTimeline(timeline) {
 }
 
 export function TimelineModal({ isOpen, onClose, row }) {
-    if (!isOpen || !row) return null;
-
-    const timeline = row["TimeLine"] || "";
+    const timeline = row?.["TimeLine"] || "";
     const timelineRows = useMemo(() => parseTimeline(timeline), [timeline]);
+    if (!isOpen || !row) return null;
 
     function extractDate(dateTimeStr) {
         if (!dateTimeStr || typeof dateTimeStr !== 'string') return dateTimeStr || "-";

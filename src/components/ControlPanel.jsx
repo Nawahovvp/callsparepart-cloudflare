@@ -61,7 +61,7 @@ function FilterButton({ label, count, isActive, onClick, textColor, isCard, isMi
     );
 }
 
-function FilterRow({ label, id, options, activeValue, onSelect, useStatusColors, isAreaCenter, isCard, isSectioned, isMini }) {
+function FilterRow({ label, id, options, activeValue, onSelect, useStatusColors, isAreaCenter, isCard, isSectioned }) {
     // Sort by count descending
     const sorted = Object.entries(options || {}).sort((a, b) => b[1] - a[1]);
 
@@ -161,12 +161,10 @@ export default function ControlPanel({
     teamPlantFilter,
     pendingUnitFilter,
     stockAnswerFilter,
-    statusCallFilter,
     // Single-select filter setters
     onTeamPlantChange,
     onPendingUnitChange,
     onStockAnswerChange,
-    onStatusCallChange
 }) {
     return (
         <div id="searchContainer">
@@ -205,7 +203,7 @@ export default function ControlPanel({
                 <input
                     type="text"
                     id="searchInput"
-                    placeholder="ค้นหา Ticket Number, Team, Material, TeamPlant, Brand, Call Type, ค้างหน่วยงาน, ผู้แจ้ง, Nawa, คลังตอบ, StatusCall, วันที่ตอบ..."
+                    placeholder="ค้นหา Ticket Number, Team, Material, TeamPlant, Store Name, Call Type, ค้างหน่วยงาน, ผู้แจ้ง, Nawa, คลังตอบ, StatusCall, วันที่ตอบ..."
                     value={searchTerm}
                     onChange={(e) => onSearchChange(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && onSearch()}
@@ -225,7 +223,7 @@ export default function ControlPanel({
                 <a
                     id="dataButton"
                     className="action-button"
-                    href="https://docs.google.com/spreadsheets/d/18mvLsq44nr8hSIDU3e94ZbW1g2wu2AtWek_NwvxfWlA/edit?gid=1305837217#gid=1305837217"
+                    href="https://docs.google.com/spreadsheets/d/112KOJI227dvyHy4w_gD8wuANrVPmFK_ezzZyV_uWVrE/edit?gid=1496713252#gid=1496713252"
                     target="_blank"
                     rel="noopener noreferrer"
                 >

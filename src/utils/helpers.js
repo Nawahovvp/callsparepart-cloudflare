@@ -88,7 +88,7 @@ export const TABLE_COLUMNS = [
     { key: 'StatusGroup', label: 'StatusCall' },
     { key: 'DayRepair', label: 'ผ่านมา' },
     { key: 'DateTime', label: 'วันที่แจ้ง' },
-    { key: 'Brand', label: 'Brand' },
+    { key: 'Brand', label: 'Store Name' },
     { key: 'Call Type', label: 'Call Type' },
     { key: 'Team', label: 'Team' },
     { key: 'TeamPlant', label: 'ศูนย์พื้นที่' },
@@ -97,6 +97,7 @@ export const TABLE_COLUMNS = [
     { key: 'Material', label: 'Material' },
     { key: 'Description', label: 'Description' },
     { key: 'Rebuilt', label: 'ทดแทน' },
+    { key: 'จำนวน', label: 'จำนวน' },
     { key: 'PR', label: 'PR' },
     { key: 'PO', label: 'PO' },
     { key: 'Nawa', label: 'นวนคร' },
@@ -112,9 +113,6 @@ export const TABLE_COLUMNS = [
     { key: 'วันที่ตอบ', label: 'วันที่ตอบ' },
     { key: 'UserAns', label: 'ผู้แจ้ง' },
     { key: 'Answer1', label: 'แจ้งผล' },
-    { key: 'GM', label: 'GM' },
-    { key: 'Division', label: 'ฝ่าย' },
-    { key: 'Department', label: 'แผนก' },
     { key: 'IDPlant', label: 'IDPlant' },
 ];
 
@@ -327,7 +325,7 @@ export function calculateStockPendingInfo(row) {
     const timelineText = row["TimeLine"];
     if (!timelineText) return { days: "0", date: "-" };
 
-    const events = timelineText.split('|');
+    const events = timelineText.split(/\||\r?\n/);
     let startStockDateObj = null;
     let displayDateStr = "-";
 
@@ -371,6 +369,59 @@ export function calculateStockPendingInfo(row) {
     return { days: "0", date: "-" };
 }
 
+export function parseCallCreateDate(value) {
+    if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+    if (value === null || value === undefined || value === '') return null;
+
+    const dateText = String(value).trim();
+    const dayFirstMatch = dateText.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+    if (dayFirstMatch) {
+        const [, first, second, sourceYear, hours = '0', minutes = '0', seconds = '0'] = dayFirstMatch;
+        const firstNumber = Number(first);
+        const secondNumber = Number(second);
+        let day = firstNumber;
+        let month = secondNumber;
+        if (firstNumber <= 12 && secondNumber > 12) {
+            month = firstNumber;
+            day = secondNumber;
+        }
+
+        let year = Number(sourceYear);
+        if (year > 2500) year -= 543;
+        const parsed = new Date(year, month - 1, day, Number(hours), Number(minutes), Number(seconds));
+        return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day
+            ? parsed
+            : null;
+    }
+
+    const parsed = new Date(dateText);
+    return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseReplyDate(value) {
+    if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+    if (value === null || value === undefined || value === '') return null;
+
+    const dateText = String(value).trim();
+    const match = dateText.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+    if (!match) {
+        const parsed = new Date(dateText);
+        return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    const [, dayText, monthText, yearText, hours = '0', minutes = '0', seconds = '0'] = match;
+    const day = Number(dayText);
+    const month = Number(monthText);
+    let year = Number(yearText);
+    if (year < 100) year += year >= 50 ? 1900 : 2000;
+    if (year > 2500) year -= 543;
+
+    const parsed = new Date(year, month - 1, day, Number(hours), Number(minutes), Number(seconds));
+    return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day
+        ? parsed
+        : null;
+}
+
 export function processRawData(
     mainData,
     requestData,
@@ -385,6 +436,48 @@ export function processRawData(
     teamPlantData,
     engData
 ) {
+    const nawaDescriptionByMaterial = new Map();
+    if (Array.isArray(nawaData)) {
+        nawaData.forEach(row => {
+            const material = normalizeMaterial(row?.Material);
+            const description = row?.["Material description"] || row?.["Material description old"] || row?.Description || "";
+            if (material && description && !nawaDescriptionByMaterial.has(material)) {
+                nawaDescriptionByMaterial.set(material, description);
+            }
+        });
+    }
+
+    const normalizedMainData = Array.isArray(mainData)
+        ? mainData.map(row => {
+            if (!row) return row;
+            const material = normalizeMaterial(row.Material);
+            const createDate = row["Create Date"] || row.DateTime;
+            const parsedCreateDate = parseCallCreateDate(createDate);
+            const elapsedDays = parsedCreateDate
+                ? Math.max(0, (Date.now() - parsedCreateDate.getTime()) / (1000 * 60 * 60 * 24))
+                : row.DayRepair;
+            const parsedReplyDate = parseReplyDate(row["วันที่ตอบ"]);
+            const pendingStockDays = parsedReplyDate
+                ? Math.max(0, Math.floor((Date.now() - parsedReplyDate.getTime()) / (1000 * 60 * 60 * 24)))
+                : 0;
+            const isCallMaterialRow = Object.prototype.hasOwnProperty.call(row, "Create Date")
+                || Object.prototype.hasOwnProperty.call(row, "Store Name");
+            const description = nawaDescriptionByMaterial.get(material);
+
+            return {
+                ...row,
+                DateTime: createDate,
+                DayRepair: elapsedDays,
+                Brand: row["Store Name"] || row.Brand,
+                "Call Type": row["Call"] || row["Call Type"],
+                UserAns: row["ผู้ตอบ"] || row.UserAns,
+                TimeLine: row["รายละเอียด"] || row.TimeLine,
+                PendingStockDays: pendingStockDays,
+                Description: description || (isCallMaterialRow ? "" : row.Description || row.Discription || row.Desc || "")
+            };
+        })
+        : mainData;
+
     // 1. Precalculate dictionaries
     const { byMaterial: reqQ, byPlant: reqByPlant } = computeRequestQuantities(requestData);
     const prQ = computePrQuantities(prData);
@@ -459,8 +552,8 @@ export function processRawData(
     // 1b. Deduplicate mainData: within each Ticket Number group, if Material is duplicated, keep only one row
     const seenTicketMaterials = new Map();
     const dedupedMainData = [];
-    if (Array.isArray(mainData)) {
-        for (const row of mainData) {
+    if (Array.isArray(normalizedMainData)) {
+        for (const row of normalizedMainData) {
             if (!row) continue;
             const ticket = String(row["Ticket Number"] || "").replace(/^'/, '').trim();
             const mat = normalizeMaterial(row["Material"]);
@@ -504,8 +597,6 @@ export function processRawData(
     const enrichedData = dedupedMainData.map(row => {
         let r = { ...row, id: row['Ticket Number'] + '_' + row['Material'] };
         const mat = normalizeMaterial(r["Material"]);
-        const tNum = String(r["Ticket Number"]).replace(/^'/, '').trim();
-
         // Stock attachments
         r["Vipa"] = vipaStock[mat] !== undefined ? vipaStock[mat] : "";
         if (r["Vipa"] === 0 || r["Vipa"] === "0") r["Vipa"] = "";
@@ -618,8 +709,13 @@ export function processRawData(
 
         // Pending Stock Days
         const stockPendingInfo = calculateStockPendingInfo(r);
-        r["PendingStockDays"] = stockPendingInfo.days;
-        r["StockStartDate"] = stockPendingInfo.date;
+        const isCallMaterialRow = Object.prototype.hasOwnProperty.call(r, "Create Date")
+            || Object.prototype.hasOwnProperty.call(r, "Store Name");
+        const replyDate = parseReplyDate(r["วันที่ตอบ"]);
+        r["PendingStockDays"] = isCallMaterialRow && replyDate
+            ? Math.max(0, Math.floor((Date.now() - replyDate.getTime()) / (1000 * 60 * 60 * 24)))
+            : isCallMaterialRow ? 0 : stockPendingInfo.days;
+        r["StockStartDate"] = isCallMaterialRow ? "" : stockPendingInfo.date;
 
         // Clean values
         r['TeamPlant'] = r['TeamPlant'] || 'ไม่ระบุ';
@@ -724,7 +820,6 @@ export function processRawData(
                     const d = parseDateString(dateStr);
                     if (d && d instanceof Date && !isNaN(d)) {
                         d.setHours(0, 0, 0, 0);
-                        const leadtimeDays = nawaLeadtimeMap.get(mat) || 0;
                         const deliveryDate = new Date(d);
                         // deliveryDate.setDate(deliveryDate.getDate() + leadtimeDays);
                         return deliveryDate < today;
@@ -771,7 +866,6 @@ export function processRawData(
                                 const d = parseDateString(dateStr);
                                 if (d && d instanceof Date && !isNaN(d)) {
                                     d.setHours(0, 0, 0, 0);
-                                    const leadtimeDays = nawaLeadtimeMap.get(mat) || 0;
                                     const deliveryDate = new Date(d);
                                     // deliveryDate.setDate(deliveryDate.getDate() + leadtimeDays);
                                     return deliveryDate < today;

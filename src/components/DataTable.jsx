@@ -1,6 +1,18 @@
 import React from 'react';
 import { TABLE_COLUMNS as COLUMNS } from '../utils/helpers';
 
+function addTicketGroupClasses(data) {
+    let lastTicket = null;
+    let isEvenGroup = false;
+    return data.map((row) => {
+        const currentTicket = row['Ticket Number'];
+        if (currentTicket !== lastTicket) {
+            isEvenGroup = !isEvenGroup;
+            lastTicket = currentTicket;
+        }
+        return { ...row, _groupClass: isEvenGroup ? 'row-group-even' : 'row-group-odd' };
+    });
+}
 
 export default function DataTable({
     data = [],
@@ -26,18 +38,7 @@ export default function DataTable({
     onTicketClick,
     onEngClick
 }) {
-    const dataWithGroup = React.useMemo(() => {
-        let lastTicket = null;
-        let isEvenGroup = false;
-        return data.map(row => {
-            const currentTicket = row['Ticket Number'];
-            if (currentTicket !== lastTicket) {
-                isEvenGroup = !isEvenGroup;
-                lastTicket = currentTicket;
-            }
-            return { ...row, _groupClass: isEvenGroup ? 'row-group-even' : 'row-group-odd' };
-        });
-    }, [data]);
+    const dataWithGroup = React.useMemo(() => addTicketGroupClasses(data), [data]);
 
     return (
         <>
@@ -137,6 +138,13 @@ export default function DataTable({
                                                     onClick={(e) => { e.stopPropagation(); onRebuiltClick?.(row); }}>{row['Rebuilt']}</span>
                                             ) : ''}
                                         </td>
+                                        <td data-column="จำนวน" style={{ textAlign: 'center' }}>
+                                            {row['จำนวน'] !== undefined && row['จำนวน'] !== null && row['จำนวน'] !== '' ? (
+                                                <span className="request-pill" style={{ backgroundColor: '#8b0000', color: '#fff' }}>
+                                                    {row['จำนวน']}
+                                                </span>
+                                            ) : ''}
+                                        </td>
                                         {/* PR */}
                                         <td data-column="PR" style={{ textAlign: 'center' }}>
                                             {prVal > 0 ? (
@@ -192,7 +200,6 @@ export default function DataTable({
                                         <td data-column="PendingStockDays" style={{ fontWeight: 'bold', color: 'var(--danger-color)', textAlign: 'center' }}>
                                             {(!row['PendingStockDays'] || row['PendingStockDays'] === "0" || row['PendingStockDays'] === "-") ? "0" : row['PendingStockDays']}
                                         </td>
-                                        {/* StockStartDate */}
                                         <td data-column="StockStartDate">{row['StockStartDate'] === "-" || !row['StockStartDate'] ? "" : row['StockStartDate']}</td>
                                         {/* คลังตอบ */}
                                         <td data-column="คลังตอบ" style={{
@@ -211,9 +218,6 @@ export default function DataTable({
                                         <td data-column="วันที่ตอบ">{row['วันที่ตอบ']}</td>
                                         <td data-column="UserAns">{row['UserAns']}</td>
                                         <td data-column="Answer1">{row['Answer1']}</td>
-                                        <td data-column="GM">{row['GM']}</td>
-                                        <td data-column="Division">{row['Division']}</td>
-                                        <td data-column="Department">{row['Department']}</td>
                                         <td data-column="IDPlant">{row['IDPlant']}</td>
                                         {/* Detail */}
                                         <td data-column="detail">

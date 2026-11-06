@@ -7,14 +7,18 @@ import { getDesc, normalizeMaterial, parseDateString } from './helpers';
 export function computeSpareSummaryData(data, rawSources) {
     if (!data || data.length === 0) return null;
     const { nawaRawData = [], poRawData = [], prRawData = [] } = rawSources;
+    const nm = (mat) => String(mat || '').trim().replace(/^0+/, '');
 
     const nawaLeadtimeMap = new Map();
+    const nawaByMaterial = new Map();
     if (Array.isArray(nawaRawData)) {
         nawaRawData.forEach(r => {
-            const mat = normalizeMaterial(r["Material"]);
-            if (mat) {
+            const material = nm(r["Material"]);
+            if (!nawaByMaterial.has(material)) nawaByMaterial.set(material, r);
+            const normalizedMaterial = normalizeMaterial(r["Material"]);
+            if (normalizedMaterial) {
                 const leadtimeVal = parseInt(r["Planned Deliv. Time"] || "0", 10);
-                nawaLeadtimeMap.set(mat, isNaN(leadtimeVal) ? 0 : leadtimeVal);
+                nawaLeadtimeMap.set(normalizedMaterial, isNaN(leadtimeVal) ? 0 : leadtimeVal);
             }
         });
     }
@@ -56,24 +60,21 @@ export function computeSpareSummaryData(data, rawSources) {
     const topMaterial = sortedMaterials.length > 0 ? sortedMaterials[0].replace('|', '\t') : '-';
 
     const prgMap = {};
-    const nm = (mat) => String(mat || '').trim().replace(/^0+/, '');
 
     sortedMaterials.forEach(matDesc => {
         const [material] = matDesc.split('|');
         const matNorm = nm(material);
         let prgVal = '-';
-        if (nawaRawData.length > 0) {
-            const nMatch = nawaRawData.find(r => nm(r["Material"] || "") === matNorm);
-            if (nMatch) {
-                const pgKey = Object.keys(nMatch).find(k =>
-                    k.trim() === "Purchasing Group" || k.trim() === "Purch. Group" || k.trim() === "PG"
-                );
-                if (pgKey && nMatch[pgKey]) {
-                    const pg = nMatch[pgKey].toString().trim();
-                    if (pg === "301") prgVal = "ในประเทศ";
-                    else if (pg === "302") prgVal = "ต่างประเทศ";
-                    else prgVal = pg;
-                }
+        const nMatch = nawaByMaterial.get(matNorm);
+        if (nMatch) {
+            const pgKey = Object.keys(nMatch).find(k =>
+                k.trim() === "Purchasing Group" || k.trim() === "Purch. Group" || k.trim() === "PG"
+            );
+            if (pgKey && nMatch[pgKey]) {
+                const pg = nMatch[pgKey].toString().trim();
+                if (pg === "301") prgVal = "ในประเทศ";
+                else if (pg === "302") prgVal = "ต่างประเทศ";
+                else prgVal = pg;
             }
         }
         prgMap[material] = prgVal;
@@ -96,14 +97,20 @@ export function computeSpareSummaryData(data, rawSources) {
     const poMap = {};
     const poDetailMap = {};
     if (poRawData.length > 0) {
+        const poByMaterial = new Map();
+        poRawData.forEach(r => {
+            const material = nm(r["Material"] || "");
+            const qty = parseFloat(String(r["Still to be delivered (qty)"] || "0").replace(/,/g, ''));
+            if (!isNaN(qty) && qty > 0) {
+                if (!poByMaterial.has(material)) poByMaterial.set(material, []);
+                poByMaterial.get(material).push(r);
+            }
+        });
+
         sortedMaterials.forEach(matDesc => {
             const [material] = matDesc.split('|');
             const matNorm = nm(material);
-            const poRecords = poRawData.filter(r => {
-                const rMat = nm(r["Material"] || "");
-                const qty = parseFloat(String(r["Still to be delivered (qty)"] || "0").replace(/,/g, ''));
-                return rMat === matNorm && !isNaN(qty) && qty > 0;
-            });
+            const poRecords = poByMaterial.get(matNorm) || [];
 
             let totalPo = 0;
             poRecords.forEach(r => {
@@ -156,7 +163,7 @@ export function computeSpareSummaryData(data, rawSources) {
         sortedMaterials.forEach(matDesc => {
             const [material] = matDesc.split('|');
             const matNorm = nm(material);
-            const nMatch = nawaRawData.find(r => nm(r["Material"] || "") === matNorm);
+            const nMatch = nawaByMaterial.get(matNorm);
             if (nMatch && nMatch["Unrestricted"]) {
                 const val = parseFloat(nMatch["Unrestricted"].toString().replace(/,/g, '')) || 0;
                 nawaMap[material] = val;

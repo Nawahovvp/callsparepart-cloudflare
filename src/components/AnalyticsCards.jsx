@@ -8,6 +8,8 @@ export default function AnalyticsCards({
     onWaitingResponseClick,
     onMaxCardClick,
     dashboardFilter,
+    callTypeStats = [],
+    onCallTypeClick,
     isAdmin = false
 }) {
     const summary = {
@@ -20,7 +22,7 @@ export default function AnalyticsCards({
     };
 
     return (
-        <>
+        <div id="analyticsDashboard" className="dashboard">
             <div
                 id="over7Card"
                 className={`dashboard-card over7-card ${dashboardFilter === 'over7' ? 'active' : ''}`}
@@ -75,11 +77,47 @@ export default function AnalyticsCards({
             </div>
 
             {isAdmin && (
-                <div id="gmSummaryCard" className="dashboard-card" style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #1e3c72, #2a5298)' }} onClick={() => onMaxCardClick?.('gmSummary')}>
+                <div id="gmSummaryCard" className="dashboard-card gm-summary-card" style={{ cursor: 'pointer' }} onClick={() => onMaxCardClick?.('gmSummary')}>
                     <h3><i className="fas fa-chart-pie"></i> สรุป GM (Executive)</h3>
                     <div className="value"><i className="fas fa-user-tie"></i></div>
                 </div>
             )}
-        </>
+            {callTypeStats.filter((item) => item.value > 0).map((item, index) => {
+                const filter = `calltype_${item.label}`;
+                const typeClass = `calltype-${String(item.label).toLowerCase()}-card`;
+                return (
+                    <div
+                        key={filter}
+                        id={`callTypeCard${index}`}
+                        className={`dashboard-card group-card ${typeClass} ${dashboardFilter === filter ? 'active' : ''}`}
+                        onClick={() => onCallTypeClick?.(filter)}
+                        style={{ minWidth: '130px' }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', marginBottom: '2px' }}>
+                            <h3 style={{ fontSize: '0.8em', margin: 0 }}>{item.label}</h3>
+                            {dashboardFilter === filter && (
+                                <div style={{
+                                    background: '#fff',
+                                    borderRadius: '50%',
+                                    width: '18px',
+                                    height: '18px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                }}>
+                                    <i className="fas fa-check-circle" style={{ fontSize: '16px', color: '#e74c3c' }}></i>
+                                </div>
+                            )}
+                        </div>
+                        <div className="value" style={{ fontSize: '1.2em' }}>{item.value}</div>
+                        <div className="progress-container" style={{ height: '4px', backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                            <div className="progress-bar" style={{ width: `${item.percent}%`, backgroundColor: '#fff' }}></div>
+                        </div>
+                        <div className="progress-text" style={{ color: '#fff' }}>{item.percent}%</div>
+                    </div>
+                );
+            })}
+        </div>
     );
 }

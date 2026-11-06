@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 
-export default function GMSummaryPage({ data = [], summary = {}, onClose }) {
+export default function GMSummaryPage({ data = [], onClose }) {
     const gmPerformance = useMemo(() => {
         if (!data || data.length === 0) return [];
 
