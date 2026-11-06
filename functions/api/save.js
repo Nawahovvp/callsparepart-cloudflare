@@ -1,4 +1,4 @@
-import { forwardToAppsScript, jsonResponse, readJsonBody } from '../_shared';
+import { forwardToAppsScript, jsonResponse, readJsonBody } from '../_shared.js';
 
 export async function onRequestPost({ request, env }) {
     const parsed = await readJsonBody(request);

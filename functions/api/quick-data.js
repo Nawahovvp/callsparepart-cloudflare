@@ -1,5 +1,5 @@
-import { jsonResponse } from '../_shared';
-import { cacheResponse, fetchSelectedSources, getEdgeCache, QUICK_SOURCE_KEYS } from './data';
+import { jsonResponse } from '../_shared.js';
+import { cacheResponse, fetchSelectedSources, getEdgeCache, QUICK_SOURCE_KEYS } from './data.js';
 
 const QUICK_DATA_COLUMNS = {
     requestData: [

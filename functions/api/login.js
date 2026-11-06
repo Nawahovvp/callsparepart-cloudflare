@@ -1,4 +1,4 @@
-import { jsonResponse, readJsonBody } from '../_shared';
+import { jsonResponse, readJsonBody } from '../_shared.js';
 
 const EMPLOYEE_URL = 'https://opensheet.elk.sh/1eqVoLsZxGguEbRCC5rdI4iMVtQ7CK4T3uXRdx8zE3uw/EmployeeWeb';
 

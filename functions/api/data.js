@@ -1,4 +1,4 @@
-import { jsonResponse } from '../_shared';
+import { jsonResponse } from '../_shared.js';
 
 const SOURCES = [
     ['mainData', 'https://opensheet.elk.sh/112KOJI227dvyHy4w_gD8wuANrVPmFK_ezzZyV_uWVrE/CallMaterial'],
