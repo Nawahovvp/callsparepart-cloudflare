@@ -88,8 +88,7 @@ export async function fetchQuickData() {
     if (data.failedSources?.length) {
         console.warn('[API] Some quick data sources failed:', data.failedSources);
     }
-    const cachedData = await loadAllFromCache();
-    return mergeCachedSources(data, cachedData);
+    return data;
 }
 
 async function postJson(url, payload) {

@@ -1,0 +1,39 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start Sparepart Call dev server",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"dev",
+				"--",
+				"--host",
+				"0.0.0.0"
+			],
+			"isBackground": true,
+			"problemMatcher": [
+				"$vite"
+			]
+		},
+		{
+			"label": "Start Cloudflare Pages preview",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"--yes",
+				"wrangler",
+				"pages",
+				"dev",
+				"dist",
+				"--ip",
+				"0.0.0.0",
+				"--port",
+				"8788"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

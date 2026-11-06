@@ -20,6 +20,58 @@ const SOURCES = [
 
 const NAWA_BACKUP_URL = 'https://script.google.com/macros/s/AKfycbywtsN35exs0olcwpwrzIbfm93QyAai2ZfHgWbjeB88d-3XIPWy1e4j3hJqzy5i6loo4g/exec';
 export const QUICK_SOURCE_KEYS = ['mainData', 'requestData', 'vipaData', 'nawaData'];
+const MATERIAL_SOURCE_KEYS = new Set([
+    'requestData', 'poData', 'prData', 'mainSapData',
+    'vipaData', 'nawaData', 'plantStockData',
+    'engData1', 'engData2', 'engData3', 'engData4', 'engData5'
+]);
+
+function normalizeMaterial(value) {
+    return String(value ?? '').replace(/^'/, '').replace(/\s+/g, '').trim().toUpperCase();
+}
+
+function normalizeTicket(value) {
+    return String(value ?? '').replace(/^'/, '').trim();
+}
+
+function getSourceMaterial(key, row) {
+    if (key === 'requestData') {
+        return row?.Material ?? row?.material ?? row?.MaterialCode ?? row?.Mat ?? row?.Item;
+    }
+    return row?.Material;
+}
+
+function filterSourceData(key, data, materials, tickets) {
+    if (!Array.isArray(data)) return data;
+
+    if (key === 'mainSapData') {
+        const relevantMaterials = new Set(materials);
+        data.forEach(row => {
+            if (materials.has(normalizeMaterial(row?.Material))) {
+                const rebuiltMaterial = normalizeMaterial(row?.Rebuilt);
+                if (rebuiltMaterial) relevantMaterials.add(rebuiltMaterial);
+            }
+        });
+        return data.filter(row => relevantMaterials.has(normalizeMaterial(row?.Material)));
+    }
+
+    if (MATERIAL_SOURCE_KEYS.has(key)) {
+        return data.filter(row => materials.has(normalizeMaterial(getSourceMaterial(key, row))));
+    }
+
+    if (key === 'newPartData') {
+        return data.filter(row =>
+            tickets.has(normalizeTicket(row?.['Ticket Number'])) &&
+            materials.has(normalizeMaterial(row?.Material))
+        );
+    }
+
+    if (key === 'projectData') {
+        return data.filter(row => tickets.has(normalizeTicket(row?.['Ticket Number'])));
+    }
+
+    return data;
+}
 
 export async function getEdgeCache(cacheKey) {
     try {
@@ -83,12 +135,28 @@ export async function fetchSelectedSources(sourceKeys, options) {
 async function fetchAllSources() {
     const results = new Map();
     const failures = [];
+    const [mainKey, mainData, mainError] = await fetchSource(SOURCES[0]);
+    results.set(mainKey, mainData);
+    if (mainError) {
+        console.error(`Data source ${mainKey} failed:`, mainError);
+        failures.push(mainKey);
+    }
+    if (!Array.isArray(mainData) || mainData.length === 0) {
+        return jsonResponse({
+            error: 'ไม่สามารถโหลดข้อมูลหลักจาก Google Sheets ได้',
+            failedSources: failures
+        }, 502);
+    }
+
+    const materials = new Set(mainData.map(row => normalizeMaterial(row?.Material)).filter(Boolean));
+    const tickets = new Set(mainData.map(row => normalizeTicket(row?.['Ticket Number'])).filter(Boolean));
+    const sources = SOURCES.slice(1);
     let nextIndex = 0;
-    const workers = Array.from({ length: 6 }, async () => {
-        while (nextIndex < SOURCES.length) {
-            const source = SOURCES[nextIndex++];
+    const workers = Array.from({ length: 2 }, async () => {
+        while (nextIndex < sources.length) {
+            const source = sources[nextIndex++];
             const [key, data, error] = await fetchSource(source);
-            results.set(key, data);
+            results.set(key, filterSourceData(key, data, materials, tickets));
             if (error) {
                 console.error(`Data source ${key} failed:`, error);
                 failures.push(key);
@@ -96,14 +164,6 @@ async function fetchAllSources() {
         }
     });
     await Promise.all(workers);
-
-    const mainData = results.get('mainData');
-    if (!Array.isArray(mainData) || mainData.length === 0) {
-        return jsonResponse({
-            error: 'ไม่สามารถโหลดข้อมูลหลักจาก Google Sheets ได้',
-            failedSources: failures
-        }, 502);
-    }
 
     const responseData = {
         mainData,

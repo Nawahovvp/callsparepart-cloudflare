@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchAllData, fetchQuickData } from '../services/api';
 import { processRawData, calculateSummary, getCleanTeamPlant, normalizeMaterial, matchesDeptGroup, parseCallCreateDate } from '../utils/helpers';
-import { loadAllFromCache, loadFromCache, saveAllToCache, saveToCache } from '../services/cacheService';
+import { loadFromCache, saveAllToCache, saveToCache } from '../services/cacheService';
 
 export function useAppData() {
     const [processedData, setProcessedData] = useState([]);
@@ -26,17 +26,28 @@ export function useAppData() {
     const hasCacheLoaded = useRef(false);
     const inFlightFetch = useRef(null);
     const fetchGeneration = useRef(0);
+    const fullDataRef = useRef(null);
 
     // Process fetched data (shared between cache load and server load)
-    const applyData = useCallback((fetchResult, saveCache = false) => {
+    const applyData = useCallback((fetchResult, saveCache = false, isPartial = false) => {
+        const completeData = isPartial && fullDataRef.current
+            ? {
+                ...fetchResult,
+                ...Object.fromEntries([
+                    'poData', 'prData', 'mainSapData', 'plantStockData',
+                    'newPartData', 'projectData', 'teamPlantData', 'engData'
+                ].map(key => [key, fullDataRef.current[key]]))
+            }
+            : fetchResult;
         const {
             mainData, requestData, poData, prData, mainSapData,
             vipaData, nawaData, plantStockData, newPartData,
             projectData, teamPlantData, engData
-        } = fetchResult;
+        } = completeData;
 
         // Skip processing if essential data is missing (e.g., empty cache)
         if (!mainData || mainData.length === 0) return false;
+        if (!isPartial) fullDataRef.current = fetchResult;
 
         const latestUpdate = Array.isArray(mainData)
             ? mainData.reduce((latest, row) => {
@@ -84,7 +95,7 @@ export function useAppData() {
                 try {
                     const quickResult = await fetchQuickData();
                     if (fetchGeneration.current !== generation) return;
-                    applyData(quickResult, false);
+                    applyData(quickResult, false, true);
                     void saveToCache('quickData', {
                         mainData: quickResult.mainData,
                         requestData: quickResult.requestData,
@@ -124,34 +135,15 @@ export function useAppData() {
 
             try {
                 // 1. Try to load from IndexedDB cache first
-                const cachedData = await loadAllFromCache();
-                const hasAppliedCache = applyData(cachedData, false);
-                
-                if (hasAppliedCache) {
-                    console.log("[Cache-First] UI populated from cache, fetching fresh in background...");
-                    setIsLoading(false); // Hide spinner early if we have cached data
-                    fetchData(false);    // Background refresh
+                const quickData = await loadFromCache('quickData');
+                if (quickData?.mainData?.length) {
+                    applyData(quickData, false, true);
+                    console.log("[Cache-First] UI populated from quick stock cache; refreshing in background...");
+                    setIsLoading(false);
+                    fetchData(false);
                 } else {
-                    const quickData = await loadFromCache('quickData');
-                    if (quickData?.mainData?.length) {
-                        applyData({
-                            ...quickData,
-                            poData: [],
-                            prData: [],
-                            mainSapData: [],
-                            plantStockData: [],
-                            newPartData: [],
-                            projectData: [],
-                            teamPlantData: [],
-                            engData: []
-                        }, false);
-                        console.log("[Cache-First] UI populated from quick stock cache; fetching fresh data in background...");
-                        setIsLoading(false);
-                        fetchData(false);
-                    } else {
-                        console.log("[Cache-First] No valid cache found, performing initial server fetch...");
-                        fetchData(true);
-                    }
+                    console.log("[Cache-First] No quick stock cache found, fetching server data...");
+                    fetchData(true);
                 }
             } catch (err) {
                 console.warn("[Cache-First] Failed to initialize from cache:", err);
