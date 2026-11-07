@@ -1,7 +1,7 @@
 import React from 'react';
 import { TABLE_COLUMNS } from '../utils/helpers';
 
-const HIDDEN_COLUMN_KEYS = new Set(['StockStartDate', 'Answer1']);
+const HIDDEN_COLUMN_KEYS = new Set(['StockStartDate', 'Answer1', 'IDPlant']);
 const COLUMNS = TABLE_COLUMNS.filter(({ key }) => !HIDDEN_COLUMN_KEYS.has(key));
 
 function addTicketGroupClasses(data) {
@@ -217,9 +217,16 @@ export default function DataTable({
                                             {statusXVal}
                                             {row._isManualStatusX && <span className="manual-pill">Manual</span>}
                                         </td>
-                                        <td data-column="วันที่ตอบ">{row['วันที่ตอบ']}</td>
-                                        <td data-column="UserAns">{row['UserAns']}</td>
-                                        <td data-column="IDPlant">{row['IDPlant']}</td>
+                                        <td data-column="วันที่ตอบ">{formatAnswerDate(row['วันที่ตอบ'])}</td>
+                                        <td data-column="UserAns">
+                                            {row['UserAns'] ? (
+                                                <span className="request-pill" style={{
+                                                    backgroundColor: statusXVal === 'ดำเนินการแล้ว' ? 'var(--success-color)' :
+                                                        statusXVal === 'รอตรวจสอบ' ? 'var(--danger-color)' : '#6c757d',
+                                                    color: '#fff'
+                                                }}>{row['UserAns']}</span>
+                                            ) : ''}
+                                        </td>
                                         {/* Detail */}
                                         <td data-column="detail">
                                             <button className="detail-button" onClick={() => onDetailClick?.(row)}>ดูรายละเอียด</button>
@@ -254,6 +261,15 @@ export default function DataTable({
 // Utilities
 function pf(val) { return parseFloat((val || "0").toString().replace(/,/g, '')) || 0; }
 function extractDate(s) { if (!s || typeof s !== 'string') return s || "-"; const m = s.match(/^(\d{2}\/\d{2}\/\d{4})/); return m ? m[1] : s; }
+function formatAnswerDate(value) {
+    if (!value) return '';
+    const text = String(value).trim();
+    const match = text.match(/^(\d{2})\/(\d{2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+    if (!match) return text;
+    const year = match[3].slice(-2);
+    const time = match[4] !== undefined ? ` ${match[4].padStart(2, '0')}:${match[5]}น` : '';
+    return `${match[1]}/${match[2]}/${year}${time}`;
+}
 function cleanTeamPlant(tp) { return (tp || "").replace(/Stock\s*/gi, '').trim(); }
 function getStatusColor(status) {
     const c = {
