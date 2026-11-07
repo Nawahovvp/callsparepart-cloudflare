@@ -4011,6 +4011,24 @@
       color: #fff !important;
     }
 
+    .filter-card.non-sa-variant.clear,
+    .filter-card.non-sa-variant.clear:hover,
+    .filter-card.non-sa-variant.clear.active,
+    .filter-card.sa-variant.clear,
+    .filter-card.sa-variant.clear:hover,
+    .filter-card.sa-variant.clear.active {
+      background: linear-gradient(135deg, #198754, #146c43) !important;
+      border-color: #146c43 !important;
+      color: #fff !important;
+    }
+
+    .filter-card.non-sa-variant.clear .filter-card-label,
+    .filter-card.non-sa-variant.clear .filter-card-count,
+    .filter-card.sa-variant.clear .filter-card-label,
+    .filter-card.sa-variant.clear .filter-card-count {
+      color: #fff !important;
+    }
+
     .filter-group-header {
       font-size: 11px;
       font-weight: 800;
