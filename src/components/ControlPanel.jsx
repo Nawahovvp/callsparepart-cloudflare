@@ -18,11 +18,11 @@ const STATUS_COLORS = {
     "แจ้งCodeผิด": "#e83e8c"
 };
 
-function FilterButton({ label, count, isActive, onClick, textColor, isCard, isMini, variant }) {
+function FilterButton({ label, count, isActive, onClick, textColor, isCard, isMini, variant, isClear }) {
     if (isCard) {
         return (
             <div
-                className={`filter-card ${isActive ? 'active' : ''} ${isMini ? 'mini' : ''} ${variant ? `${variant}-variant` : ''}`}
+                className={`filter-card ${isActive ? 'active' : ''} ${isMini ? 'mini' : ''} ${variant ? `${variant}-variant` : ''} ${isClear ? 'clear' : ''}`}
                 onClick={onClick}
                 style={!isActive && textColor ? { borderColor: textColor } : {}}
             >
@@ -61,7 +61,7 @@ function FilterButton({ label, count, isActive, onClick, textColor, isCard, isMi
     );
 }
 
-function FilterRow({ label, id, options, activeValue, onSelect, useStatusColors, isAreaCenter, isCard, isSectioned }) {
+function FilterRow({ label, id, options, activeValue, onSelect, useStatusColors, isAreaCenter, isCard, isSectioned, noWaitingByKey }) {
     // Sort by count descending
     const sorted = Object.entries(options || {}).sort((a, b) => b[1] - a[1]);
 
@@ -89,6 +89,7 @@ function FilterRow({ label, id, options, activeValue, onSelect, useStatusColors,
                                     textColor={useStatusColors ? STATUS_COLORS[key] : undefined}
                                     isCard={isCard}
                                     variant="non-sa"
+                                    isClear={noWaitingByKey?.[key] === true}
                                 />
                             ))}
                         </div>
@@ -111,6 +112,7 @@ function FilterRow({ label, id, options, activeValue, onSelect, useStatusColors,
                                     textColor={useStatusColors ? STATUS_COLORS[key] : undefined}
                                     isCard={isCard}
                                     variant="sa"
+                                    isClear={noWaitingByKey?.[key] === true}
                                 />
                             ))}
                         </div>
@@ -139,6 +141,7 @@ function FilterRow({ label, id, options, activeValue, onSelect, useStatusColors,
                         onClick={() => onSelect(activeValue === key ? '' : key)}
                         textColor={useStatusColors ? STATUS_COLORS[key] : undefined}
                         isCard={isCard}
+                        isClear={noWaitingByKey?.[key] === true}
                     />
                 ))}
             </div>
@@ -186,6 +189,9 @@ export default function ControlPanel({
                 onSelect={onPendingUnitChange}
                 isCard={true}
                 isSectioned={true}
+                noWaitingByKey={availableFilters?.pendingUnitHasWaiting
+                    ? Object.fromEntries(Object.entries(availableFilters.pendingUnitHasWaiting).map(([unit, hasWaiting]) => [unit, !hasWaiting]))
+                    : undefined}
             />
             <FilterRow
                 label="คลังตอบ"

@@ -277,12 +277,26 @@ export function useAppData() {
         return counts;
     }, []);
 
+    const getPendingUnitWaitingStatus = useCallback((data) => {
+        const statusByUnit = {};
+        data.forEach(row => {
+            const unit = String(row["ค้างหน่วยงาน"] || "").trim();
+            if (!unit || unit === "ไม่ระบุ") return;
+            if (!(unit in statusByUnit)) statusByUnit[unit] = false;
+            if (String(row["คลังตอบ"] || "").trim() === "รอตรวจสอบ") {
+                statusByUnit[unit] = true;
+            }
+        });
+        return statusByUnit;
+    }, []);
+
     const availableFilters = useMemo(() => ({
         teamPlant: computeFilterOptions(teamPlantFilterData, null, (row) => getCleanTeamPlant(row["TeamPlant"])),
         pendingUnit: computeFilterOptions(pendingFilterData, "ค้างหน่วยงาน"),
+        pendingUnitHasWaiting: getPendingUnitWaitingStatus(pendingFilterData),
         stockAnswer: computeFilterOptions(stockFilterData, "คลังตอบ"),
         statusCall: computeFilterOptions(statusFilterData, null, (row) => row.StatusX || "")
-    }), [teamPlantFilterData, pendingFilterData, stockFilterData, statusFilterData, computeFilterOptions]);
+    }), [teamPlantFilterData, pendingFilterData, stockFilterData, statusFilterData, computeFilterOptions, getPendingUnitWaitingStatus]);
 
     // Optimistic update for DOM re-render without full fetch
     const updateRowLocally = useCallback((ticketNumber, material, updates) => {
