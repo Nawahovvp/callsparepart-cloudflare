@@ -481,8 +481,6 @@ export function processRawData(
         }).flatMap(row => {
             if (!row) return [];
             const currentMaterial = normalizeMaterial(row.Material);
-            if (currentMaterial && currentMaterial !== "-") return [row];
-
             const details = String(row["รายละเอียด"] || row.TimeLine || "");
             const labeledCode = details.match(/Material\s*Code\s*:\s*(\d+)/i)?.[1];
             const quantitiesByMaterial = new Map(
@@ -491,22 +489,26 @@ export function processRawData(
             );
             let materials = [];
 
-            // CallMaterial may concatenate two 8-digit material codes after this label.
-            if (labeledCode?.length === 16) {
-                materials = [labeledCode.slice(0, 8), labeledCode.slice(8)];
-            } else {
-                // Other detail formats can mention the same 300xxxxx code repeatedly.
-                materials = [...details.matchAll(/(?:^|\D)(300\d{5})(?!\d)/g)].map(match => match[1]);
+            if (currentMaterial && currentMaterial !== "-") {
+                materials.push(currentMaterial);
             }
 
+            // CallMaterial may concatenate two 8-digit material codes after this label.
+            if (labeledCode?.length === 16) {
+                materials.push(labeledCode.slice(0, 8), labeledCode.slice(8));
+            }
+            // Also include other 300xxxxx codes listed in details, even when the row
+            // already has a Material. Repeated history entries collapse below.
+            materials.push(...[...details.matchAll(/(?:^|\D)(300\d{5})(?!\d)/g)].map(match => match[1]));
+
             const uniqueMaterials = [...new Set(materials)];
-            return uniqueMaterials.length
-                ? uniqueMaterials.map(Material => ({
-                    ...row,
-                    Material,
-                    "จำนวน": quantitiesByMaterial.get(Material) || row["จำนวน"] || ""
-                }))
-                : [row];
+            if (!uniqueMaterials.length) return [row];
+            return uniqueMaterials.map(Material => ({
+                ...row,
+                Material,
+                "จำนวน": quantitiesByMaterial.get(Material)
+                    || (Material === currentMaterial || labeledCode?.length === 16 ? row["จำนวน"] : "")
+            }));
         })
         : mainData;
 
