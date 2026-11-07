@@ -460,6 +460,8 @@ export function processRawData(
             const pendingStockDays = parsedReplyDate
                 ? Math.max(0, Math.floor((Date.now() - parsedReplyDate.getTime()) / (1000 * 60 * 60 * 24)))
                 : 0;
+            const details = String(row["รายละเอียด"] || row.TimeLine || "");
+            const detailQuantity = details.match(/จำนวน\s*:\s*([\d,]+)/i)?.[1]?.replace(/,/g, '');
             const isCallMaterialRow = Object.prototype.hasOwnProperty.call(row, "Create Date")
                 || Object.prototype.hasOwnProperty.call(row, "Store Name");
             const description = nawaDescriptionByMaterial.get(material);
@@ -471,7 +473,8 @@ export function processRawData(
                 Brand: row["Store Name"] || row.Brand,
                 "Call Type": row["Call"] || row["Call Type"],
                 UserAns: row["ผู้ตอบ"] || row.UserAns,
-                TimeLine: row["รายละเอียด"] || row.TimeLine,
+                TimeLine: details,
+                "จำนวน": row["จำนวน"] || row.Quantity || detailQuantity || "",
                 PendingStockDays: pendingStockDays,
                 Description: description || (isCallMaterialRow ? "" : row.Description || row.Discription || row.Desc || "")
             };

@@ -34,6 +34,29 @@ function normalizeTicket(value) {
     return String(value ?? '').replace(/^'/, '').trim();
 }
 
+export function collectCallMaterials(rows) {
+    const materials = new Set();
+    if (!Array.isArray(rows)) return materials;
+
+    rows.forEach(row => {
+        const directMaterial = normalizeMaterial(row?.Material);
+        if (directMaterial) materials.add(directMaterial);
+
+        const details = String(row?.['รายละเอียด'] || row?.TimeLine || '');
+        const labeledCode = details.match(/Material\s*Code\s*:\s*(\d+)/i)?.[1];
+        if (labeledCode?.length === 16) {
+            materials.add(labeledCode.slice(0, 8));
+            materials.add(labeledCode.slice(8));
+        }
+
+        for (const match of details.matchAll(/(?:^|\D)(300\d{5})(?!\d)/g)) {
+            materials.add(match[1]);
+        }
+    });
+
+    return materials;
+}
+
 function getSourceMaterial(key, row) {
     if (key === 'requestData') {
         return row?.Material ?? row?.material ?? row?.MaterialCode ?? row?.Mat ?? row?.Item;
@@ -157,7 +180,7 @@ async function fetchAllSources(nawaBackupUrl) {
         }, 502);
     }
 
-    const materials = new Set(mainData.map(row => normalizeMaterial(row?.Material)).filter(Boolean));
+    const materials = collectCallMaterials(mainData);
     const tickets = new Set(mainData.map(row => normalizeTicket(row?.['Ticket Number'])).filter(Boolean));
     const sources = SOURCES.slice(1);
     let nextIndex = 0;

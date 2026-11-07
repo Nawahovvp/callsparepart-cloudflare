@@ -1,5 +1,5 @@
 import { jsonResponse } from '../_shared.js';
-import { cacheResponse, fetchSelectedSources, getEdgeCache, QUICK_SOURCE_KEYS } from './data.js';
+import { cacheResponse, collectCallMaterials, fetchSelectedSources, getEdgeCache, QUICK_SOURCE_KEYS } from './data.js';
 
 const QUICK_DATA_COLUMNS = {
     requestData: [
@@ -18,13 +18,6 @@ function selectColumns(rows, columns) {
     return rows.map(row => Object.fromEntries(
         columns.filter(column => row[column] !== undefined).map(column => [column, row[column]])
     ));
-}
-
-function getCallMaterials(rows) {
-    if (!Array.isArray(rows)) return new Set();
-    return new Set(rows
-        .map(row => String(row?.Material ?? '').replace(/^'/, '').replace(/\s+/g, '').trim().toUpperCase())
-        .filter(Boolean));
 }
 
 function filterStockRows(rows, materials) {
@@ -51,7 +44,7 @@ async function fetchQuickData() {
         }, 502);
     }
 
-    const callMaterials = getCallMaterials(mainData);
+    const callMaterials = collectCallMaterials(mainData);
     return jsonResponse({
         mainData,
         requestData: selectColumns(data.requestData, QUICK_DATA_COLUMNS.requestData),
