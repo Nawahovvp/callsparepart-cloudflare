@@ -183,7 +183,7 @@ export function useAppData() {
                 const keyword = searchTerm.toLowerCase().trim();
                 const fields = [
                     row["DayRepair"], row["DateTime"], row["Ticket Number"],
-                    row["Brand"], row["Call Type"], row["Team"],
+                    row["Brand"], row["Equipment"], row["Call Type"], row["Team"],
                     cleanTP, row["ค้างหน่วยงาน"], row["Material"],
                     row["Description"], row["Nawa"], row["Vipa"],
                     row["Request"], row["EngQty"],

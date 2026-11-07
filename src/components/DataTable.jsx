@@ -121,6 +121,7 @@ export default function DataTable({
                                         </td>
                                         <td data-column="DateTime">{extractDate(row['DateTime'])}</td>
                                         <td data-column="Brand">{row['Brand']}</td>
+                                        <td data-column="Equipment">{row['Equipment']}</td>
                                         <td data-column="Call Type">{row['Call Type']}</td>
                                         <td data-column="Team">{row['Team']}</td>
                                         <td data-column="TeamPlant">{cleanTeamPlant(row['TeamPlant'])}</td>

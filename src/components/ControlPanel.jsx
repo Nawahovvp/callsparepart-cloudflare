@@ -203,7 +203,7 @@ export default function ControlPanel({
                 <input
                     type="text"
                     id="searchInput"
-                    placeholder="ค้นหา Ticket Number, Team, Material, TeamPlant, Store Name, Call Type, ค้างหน่วยงาน, ผู้แจ้ง, Nawa, คลังตอบ, StatusCall, วันที่ตอบ..."
+                    placeholder="ค้นหา Ticket Number, Team, Material, TeamPlant, Store Name, Equipment, Call Type, ค้างหน่วยงาน, ผู้แจ้ง, Nawa, คลังตอบ, StatusCall, วันที่ตอบ..."
                     value={searchTerm}
                     onChange={(e) => onSearchChange(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && onSearch()}
