@@ -89,7 +89,7 @@ function App() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
-  const [sortConfig, setSortConfig] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: 'StatusCall', direction: 'asc' });
   const [selectedRows, setSelectedRows] = useState([]);
 
   // Modal states
@@ -119,7 +119,7 @@ function App() {
     setSortConfig({ key, direction });
   };
 
-  // Default sort: DayRepair desc, then Ticket Number
+  // Default sort: StatusCall ascending
   const tableData = React.useMemo(() => {
     const ticketCounts = new Map();
     allData.forEach(row => {
