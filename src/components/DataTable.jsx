@@ -221,8 +221,8 @@ export default function DataTable({
                                         <td data-column="UserAns">
                                             {row['UserAns'] ? (
                                                 <span className="request-pill" style={{
-                                                    backgroundColor: statusXVal === 'ดำเนินการแล้ว' ? 'var(--success-color)' :
-                                                        statusXVal === 'รอตรวจสอบ' ? 'var(--danger-color)' : '#6c757d',
+                                                    backgroundColor: row['คลังตอบ'] === 'ดำเนินการแล้ว' ? 'var(--success-color)' :
+                                                        row['คลังตอบ'] === 'รอตรวจสอบ' ? 'var(--danger-color)' : '#6c757d',
                                                     color: '#fff'
                                                 }}>{row['UserAns']}</span>
                                             ) : ''}
