@@ -462,6 +462,9 @@ export function processRawData(
                 : 0;
             const details = String(row["รายละเอียด"] || row.TimeLine || "");
             const detailQuantity = details.match(/จำนวน\s*:\s*([\d,]+)/i)?.[1]?.replace(/,/g, '');
+            const callMaterialQuantity = [row["จำนวน"], row.Quantity].find(value =>
+                value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-"
+            );
             const isCallMaterialRow = Object.prototype.hasOwnProperty.call(row, "Create Date")
                 || Object.prototype.hasOwnProperty.call(row, "Store Name");
             const description = nawaDescriptionByMaterial.get(material);
@@ -474,7 +477,8 @@ export function processRawData(
                 "Call Type": row["Call"] || row["Call Type"],
                 UserAns: row["ผู้ตอบ"] || row.UserAns,
                 TimeLine: details,
-                "จำนวน": row["จำนวน"] || row.Quantity || detailQuantity || "",
+                "จำนวน": callMaterialQuantity ?? detailQuantity ?? "1",
+                _callMaterialQuantity: callMaterialQuantity ?? "",
                 PendingStockDays: pendingStockDays,
                 Description: description || (isCallMaterialRow ? "" : row.Description || row.Discription || row.Desc || "")
             };
@@ -484,8 +488,11 @@ export function processRawData(
             const details = String(row["รายละเอียด"] || row.TimeLine || "");
             const labeledCode = details.match(/Material\s*Code\s*:\s*(\d+)/i)?.[1];
             const quantitiesByMaterial = new Map(
-                [...details.matchAll(/(?:^|\D)(300\d{5})\s+([\d,]+(?:\.\d+)?)\s*(?:PCS?|EA)?/gi)]
-                    .map(match => [match[1], match[2].replace(/,/g, '')])
+                [...details.matchAll(/(?:^|\D)(300\d{5})[^\S\r\n]+([\d,]+(?:\.\d+)?)[^\S\r\n]*(?:PCS?|EA)?/gi)]
+                    .map(match => {
+                        const quantity = match[2].replace(/,/g, '');
+                        return [match[1], /^\d{2}\.\d{2}$/.test(quantity) ? "1" : quantity];
+                    })
             );
             let materials = [];
 
@@ -508,8 +515,9 @@ export function processRawData(
                 ...row,
                 Material,
                 Description: labeledCode?.length === 16 || detailMaterials.length ? "" : row.Description,
-                "จำนวน": quantitiesByMaterial.get(Material)
-                    || (Material === currentMaterial || labeledCode?.length === 16 ? row["จำนวน"] : "")
+                "จำนวน": row._callMaterialQuantity !== ""
+                    ? row._callMaterialQuantity
+                    : quantitiesByMaterial.get(Material) ?? row["จำนวน"] ?? "1"
             }));
         })
         : mainData;
@@ -632,6 +640,7 @@ export function processRawData(
     // 2. Iterate, mutate, attach values
     const enrichedData = dedupedMainData.map(row => {
         let r = { ...row, id: row['Ticket Number'] + '_' + row['Material'] };
+        delete r._callMaterialQuantity;
         const mat = normalizeMaterial(r["Material"]);
         if (!r["Description"] && mat) {
             const sapMaterial = mainSapMap.get(mat);
