@@ -146,6 +146,12 @@ function App() {
           if (dayA !== dayB) return sortConfig.direction === 'asc' ? dayA - dayB : dayB - dayA;
           return (a["Ticket Number"] || "").localeCompare(b["Ticket Number"] || "");
         }
+        if (sortConfig.key === 'PendingStockDays') {
+          const daysA = parseFloat(String(valA ?? "0").replace(/,/g, "")) || 0;
+          const daysB = parseFloat(String(valB ?? "0").replace(/,/g, "")) || 0;
+          if (daysA !== daysB) return sortConfig.direction === 'asc' ? daysA - daysB : daysB - daysA;
+          return (a["Ticket Number"] || "").localeCompare(b["Ticket Number"] || "");
+        }
         valA = String(valA || "").toLowerCase();
         valB = String(valB || "").toLowerCase();
         return sortConfig.direction === 'asc'
