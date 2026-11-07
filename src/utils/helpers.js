@@ -485,6 +485,10 @@ export function processRawData(
 
             const details = String(row["รายละเอียด"] || row.TimeLine || "");
             const labeledCode = details.match(/Material\s*Code\s*:\s*(\d+)/i)?.[1];
+            const quantitiesByMaterial = new Map(
+                [...details.matchAll(/(?:^|\D)(300\d{5})\s+([\d,]+(?:\.\d+)?)\s*(?:PCS?|EA)?/gi)]
+                    .map(match => [match[1], match[2].replace(/,/g, '')])
+            );
             let materials = [];
 
             // CallMaterial may concatenate two 8-digit material codes after this label.
@@ -497,7 +501,11 @@ export function processRawData(
 
             const uniqueMaterials = [...new Set(materials)];
             return uniqueMaterials.length
-                ? uniqueMaterials.map(Material => ({ ...row, Material }))
+                ? uniqueMaterials.map(Material => ({
+                    ...row,
+                    Material,
+                    "จำนวน": quantitiesByMaterial.get(Material) || row["จำนวน"] || ""
+                }))
                 : [row];
         })
         : mainData;
