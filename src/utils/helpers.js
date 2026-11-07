@@ -618,6 +618,14 @@ export function processRawData(
     const enrichedData = dedupedMainData.map(row => {
         let r = { ...row, id: row['Ticket Number'] + '_' + row['Material'] };
         const mat = normalizeMaterial(r["Material"]);
+        if (!r["Description"] && mat) {
+            const sapMaterial = mainSapMap.get(mat);
+            r["Description"] = nawaDescriptionByMaterial.get(mat)
+                || sapMaterial?.["Material description"]
+                || sapMaterial?.["Material description old"]
+                || sapMaterial?.Description
+                || "";
+        }
         // Stock attachments
         r["Vipa"] = vipaStock[mat] !== undefined ? vipaStock[mat] : "";
         if (r["Vipa"] === 0 || r["Vipa"] === "0") r["Vipa"] = "";
