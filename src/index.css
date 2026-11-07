@@ -2302,6 +2302,10 @@
       transition: all 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
     }
 
+    .dept-card.dept-clear {
+      background: linear-gradient(135deg, #198754, #146c43) !important;
+    }
+
     .dept-card.active {
       box-shadow: 0 0 0 3px #fff, 0 15px 35px rgba(13, 110, 253, 0.45) !important;
       transform: scale(1.08) translateY(-6px) !important;

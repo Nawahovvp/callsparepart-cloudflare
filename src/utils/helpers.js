@@ -1043,6 +1043,9 @@ export function calculateSummary(processedData) {
         'Sale': new Set(),
         'จัดส่ง': new Set()
     };
+    const deptGroupWaitingTicketCounts = Object.fromEntries(
+        DEPT_GROUPS.map(group => [group.key, new Set()])
+    );
 
     Object.keys(ticketGroups).forEach(ticket => {
         const rows = ticketGroups[ticket];
@@ -1080,6 +1083,9 @@ export function calculateSummary(processedData) {
             DEPT_GROUPS.forEach(g => {
                 if (g.test(pendingUnit)) {
                     ticketDeptGroups.add(g.key);
+                    if (r['คลังตอบ'] === 'รอตรวจสอบ') {
+                        deptGroupWaitingTicketCounts[g.key].add(ticket);
+                    }
                 }
             });
 
@@ -1168,7 +1174,8 @@ export function calculateSummary(processedData) {
         return {
             label: g.label,
             value: count,
-            percent: totalTickets > 0 ? (count / totalTickets * 100).toFixed(0) : 0
+            percent: totalTickets > 0 ? (count / totalTickets * 100).toFixed(0) : 0,
+            waitingResponse: deptGroupWaitingTicketCounts[g.key]?.size || 0
         };
     });
 

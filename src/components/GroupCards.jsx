@@ -1,9 +1,9 @@
 import React from 'react';
 
-function GroupCard({ label, value, percent, id, onClick, isActive, typeClass }) {
+function GroupCard({ label, value, percent, id, onClick, isActive, typeClass, isDepartmentClear }) {
     return (
         <div
-            className={`dashboard-card group-card ${typeClass} ${isActive ? 'active' : ''}`}
+            className={`dashboard-card group-card ${typeClass} ${isDepartmentClear ? 'dept-clear' : ''} ${isActive ? 'active' : ''}`}
             onClick={() => onClick(id)}
             style={{ minWidth: '130px' }}
         >
@@ -78,6 +78,7 @@ export default function GroupCards({ title, stats = [], onCardClick, activeFilte
                         onClick={onCardClick}
                         isActive={activeFilter === `${prefix}${item.label}` || activeFilter === item.label}
                         typeClass={getTypeClass(item.label)}
+                        isDepartmentClear={prefix === 'dept_' && item.waitingResponse === 0}
                     />
                 ))}
                 {children}
