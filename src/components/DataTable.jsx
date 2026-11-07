@@ -1,7 +1,7 @@
 import React from 'react';
 import { TABLE_COLUMNS } from '../utils/helpers';
 
-const HIDDEN_COLUMN_KEYS = new Set(['StockStartDate', 'Answer1', 'IDPlant']);
+const HIDDEN_COLUMN_KEYS = new Set(['StockStartDate', 'Answer1', 'IDPlant', 'Equipment']);
 const COLUMNS = TABLE_COLUMNS.filter(({ key }) => !HIDDEN_COLUMN_KEYS.has(key));
 
 function addTicketGroupClasses(data) {
@@ -121,7 +121,6 @@ export default function DataTable({
                                         </td>
                                         <td data-column="DateTime">{extractDate(row['DateTime'])}</td>
                                         <td data-column="Brand">{row['Brand']}</td>
-                                        <td data-column="Equipment">{row['Equipment']}</td>
                                         <td data-column="Call Type">{row['Call Type']}</td>
                                         <td data-column="Team">{row['Team']}</td>
                                         <td data-column="TeamPlant">{cleanTeamPlant(row['TeamPlant'])}</td>

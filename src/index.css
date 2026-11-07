@@ -645,6 +645,7 @@
     td[data-column="Description"] {
       color: #000 !important;
       font-weight: normal !important;
+      text-align: left !important;
     }
 
     td[data-column="Rebuilt"] .request-pill {
