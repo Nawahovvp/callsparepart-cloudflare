@@ -499,13 +499,15 @@ export function processRawData(
             }
             // Also include other 300xxxxx codes listed in details, even when the row
             // already has a Material. Repeated history entries collapse below.
-            materials.push(...[...details.matchAll(/(?:^|\D)(300\d{5})(?!\d)/g)].map(match => match[1]));
+            const detailMaterials = [...details.matchAll(/(?:^|\D)(300\d{5})(?!\d)/g)].map(match => match[1]);
+            materials.push(...detailMaterials);
 
             const uniqueMaterials = [...new Set(materials)];
             if (!uniqueMaterials.length) return [row];
             return uniqueMaterials.map(Material => ({
                 ...row,
                 Material,
+                Description: labeledCode?.length === 16 || detailMaterials.length ? "" : row.Description,
                 "จำนวน": quantitiesByMaterial.get(Material)
                     || (Material === currentMaterial || labeledCode?.length === 16 ? row["จำนวน"] : "")
             }));
