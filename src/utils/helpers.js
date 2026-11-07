@@ -475,6 +475,27 @@ export function processRawData(
                 PendingStockDays: pendingStockDays,
                 Description: description || (isCallMaterialRow ? "" : row.Description || row.Discription || row.Desc || "")
             };
+        }).flatMap(row => {
+            if (!row) return [];
+            const currentMaterial = normalizeMaterial(row.Material);
+            if (currentMaterial && currentMaterial !== "-") return [row];
+
+            const details = String(row["รายละเอียด"] || row.TimeLine || "");
+            const labeledCode = details.match(/Material\s*Code\s*:\s*(\d+)/i)?.[1];
+            let materials = [];
+
+            // CallMaterial may concatenate two 8-digit material codes after this label.
+            if (labeledCode?.length === 16) {
+                materials = [labeledCode.slice(0, 8), labeledCode.slice(8)];
+            } else {
+                // Other detail formats can mention the same 300xxxxx code repeatedly.
+                materials = [...details.matchAll(/(?:^|\D)(300\d{5})(?!\d)/g)].map(match => match[1]);
+            }
+
+            const uniqueMaterials = [...new Set(materials)];
+            return uniqueMaterials.length
+                ? uniqueMaterials.map(Material => ({ ...row, Material }))
+                : [row];
         })
         : mainData;
 
