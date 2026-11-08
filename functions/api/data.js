@@ -182,13 +182,34 @@ async function fetchAllSources(nawaBackupUrl) {
 
     const materials = collectCallMaterials(mainData);
     const tickets = new Set(mainData.map(row => normalizeTicket(row?.['Ticket Number'])).filter(Boolean));
-    const sources = SOURCES.slice(1);
+    const [mainSapKey, mainSapData, mainSapError] = await fetchSource(
+        SOURCES.find(([key]) => key === 'mainSapData'),
+        { nawaBackupUrl }
+    );
+    const filteredMainSapData = filterSourceData(mainSapKey, mainSapData, materials, tickets);
+    results.set(mainSapKey, filteredMainSapData);
+    if (mainSapError) {
+        console.error(`Data source ${mainSapKey} failed:`, mainSapError);
+        failures.push(mainSapKey);
+    }
+
+    const sourceMaterials = new Set(materials);
+    if (Array.isArray(filteredMainSapData)) {
+        filteredMainSapData.forEach(row => {
+            if (materials.has(normalizeMaterial(row?.Material))) {
+                const rebuiltMaterial = normalizeMaterial(row?.Rebuilt);
+                if (rebuiltMaterial) sourceMaterials.add(rebuiltMaterial);
+            }
+        });
+    }
+
+    const sources = SOURCES.slice(1).filter(([key]) => key !== 'mainSapData');
     let nextIndex = 0;
     const workers = Array.from({ length: 2 }, async () => {
         while (nextIndex < sources.length) {
             const source = sources[nextIndex++];
             const [key, data, error] = await fetchSource(source, { nawaBackupUrl });
-            results.set(key, filterSourceData(key, data, materials, tickets));
+            results.set(key, filterSourceData(key, data, sourceMaterials, tickets));
             if (error) {
                 console.error(`Data source ${key} failed:`, error);
                 failures.push(key);
