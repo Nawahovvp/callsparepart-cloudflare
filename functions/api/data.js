@@ -122,12 +122,16 @@ export function cacheResponse(waitUntil, cacheKey, response) {
     }
 }
 
-async function fetchJson(url, timeoutMs = 25000) {
+async function fetchJson(url, timeoutMs = 25000, fresh = false) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
         const response = await fetch(url, {
-            headers: { Accept: 'application/json' },
+            headers: {
+                Accept: 'application/json',
+                ...(fresh ? { 'Cache-Control': 'no-cache' } : {})
+            },
+            cache: fresh ? 'no-store' : 'default',
             signal: controller.signal
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -139,14 +143,14 @@ async function fetchJson(url, timeoutMs = 25000) {
 
 export async function fetchSource(
     [key, url],
-    { timeoutMs = 25000, allowNawaBackup = true, nawaBackupUrl = NAWA_BACKUP_URL } = {}
+    { timeoutMs = 25000, allowNawaBackup = true, nawaBackupUrl = NAWA_BACKUP_URL, fresh = false } = {}
 ) {
     try {
-        return [key, await fetchJson(url, timeoutMs), null];
+        return [key, await fetchJson(url, timeoutMs, fresh), null];
     } catch (error) {
         if (key === 'nawaData' && allowNawaBackup && nawaBackupUrl) {
             try {
-                return [key, await fetchJson(nawaBackupUrl, timeoutMs), null];
+                return [key, await fetchJson(nawaBackupUrl, timeoutMs, fresh), null];
             } catch (backupError) {
                 return [key, [], backupError];
             }
@@ -164,10 +168,10 @@ export async function fetchSelectedSources(sourceKeys, options) {
     return { data, failures };
 }
 
-async function fetchAllSources(nawaBackupUrl) {
+async function fetchAllSources(nawaBackupUrl, fresh = false) {
     const results = new Map();
     const failures = [];
-    const [mainKey, mainData, mainError] = await fetchSource(SOURCES[0]);
+    const [mainKey, mainData, mainError] = await fetchSource(SOURCES[0], { fresh });
     results.set(mainKey, mainData);
     if (mainError) {
         console.error(`Data source ${mainKey} failed:`, mainError);
@@ -184,7 +188,7 @@ async function fetchAllSources(nawaBackupUrl) {
     const tickets = new Set(mainData.map(row => normalizeTicket(row?.['Ticket Number'])).filter(Boolean));
     const [mainSapKey, mainSapData, mainSapError] = await fetchSource(
         SOURCES.find(([key]) => key === 'mainSapData'),
-        { nawaBackupUrl }
+        { nawaBackupUrl, fresh }
     );
     const filteredMainSapData = filterSourceData(mainSapKey, mainSapData, materials, tickets);
     results.set(mainSapKey, filteredMainSapData);
@@ -208,7 +212,7 @@ async function fetchAllSources(nawaBackupUrl) {
     const workers = Array.from({ length: 2 }, async () => {
         while (nextIndex < sources.length) {
             const source = sources[nextIndex++];
-            const [key, data, error] = await fetchSource(source, { nawaBackupUrl });
+            const [key, data, error] = await fetchSource(source, { nawaBackupUrl, fresh });
             results.set(key, filterSourceData(key, data, sourceMaterials, tickets));
             if (error) {
                 console.error(`Data source ${key} failed:`, error);
@@ -237,18 +241,21 @@ async function fetchAllSources(nawaBackupUrl) {
         failedSources: failures
     };
 
-    return jsonResponse(responseData, 200, {
-        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600'
-    });
+    return jsonResponse(responseData, 200, fresh
+        ? { 'Cache-Control': 'no-store' }
+        : { 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' });
 }
 
 export async function onRequestGet({ request, waitUntil, env }) {
+    const fresh = new URL(request.url).searchParams.get('fresh') === '1';
     const cacheKey = new Request(new URL('/api/data', request.url).toString());
-    const cached = await getEdgeCache(cacheKey);
-    if (cached) return cached;
+    if (!fresh) {
+        const cached = await getEdgeCache(cacheKey);
+        if (cached) return cached;
+    }
 
     const nawaBackupUrl = env?.nawa_backup_url || env?.NAWA_BACKUP_URL;
-    const response = await fetchAllSources(nawaBackupUrl);
+    const response = await fetchAllSources(nawaBackupUrl, fresh);
     if (response.ok && response.headers.get('Cache-Control')?.includes('s-maxage=300')) {
         cacheResponse(waitUntil, cacheKey, response);
     }

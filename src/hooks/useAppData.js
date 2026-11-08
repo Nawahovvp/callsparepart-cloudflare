@@ -82,10 +82,13 @@ export function useAppData() {
         return true;
     }, []);
 
-    const fetchData = useCallback(async (showLoading = true) => {
-        // Manual refresh, the periodic refresh, and post-save refreshes can
-        // coincide. Reuse the active request instead of downloading all sheets again.
-        if (inFlightFetch.current) return inFlightFetch.current;
+    const fetchData = useCallback(async (showLoading = true, forceFresh = false) => {
+        // Routine refreshes reuse active work; a manual fresh refresh runs after it.
+        if (inFlightFetch.current) {
+            if (!forceFresh) return inFlightFetch.current;
+            await inFlightFetch.current;
+            if (inFlightFetch.current) return inFlightFetch.current;
+        }
 
         if (showLoading) setIsLoading(true);
         setError(null);
@@ -93,7 +96,7 @@ export function useAppData() {
         const request = (async () => {
             try {
                 try {
-                    const quickResult = await fetchQuickData();
+                    const quickResult = await fetchQuickData({ fresh: forceFresh });
                     if (fetchGeneration.current !== generation) return;
                     applyData(quickResult, false, true);
                     void saveToCache('quickData', {
@@ -107,7 +110,7 @@ export function useAppData() {
                     console.warn('[API] Quick data fetch failed; falling back to full data:', quickError);
                 }
 
-                const result = await fetchAllData();
+                const result = await fetchAllData({ fresh: forceFresh });
                 if (fetchGeneration.current === generation) {
                     const applied = applyData(result, true);
                     if (!applied) {
@@ -384,7 +387,7 @@ export function useAppData() {
         gmFilter, setGmFilter,
         deptGroupFilter, setDeptGroupFilter,
         applyDashboardFilter,
-        refreshData: () => fetchData(true),
+        refreshData: () => fetchData(true, true),
         refreshDataBackground: () => fetchData(false),
         updateRowLocally,
         handleOutsideRequest: async (payload) => {

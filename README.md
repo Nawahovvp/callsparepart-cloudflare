@@ -13,7 +13,7 @@ React/Vite dashboard with Vercel Functions. Google Sheets remains the source of 
    - `NAWA_BACKUP_URL`: the Google Apps Script `/exec` URL used as a fallback if the Nawa OpenSheet source fails (optional; defaults to the current backup endpoint).
 4. Deploy. The data functions use a five-minute maximum duration, which is within the current Vercel Hobby (Free) limit of 300 seconds.
 
-The source sheet URLs are defined in `functions/api/data.js`; the main call list comes from the `CallMaterial` sheet in the configured spreadsheet. The API returns all dashboard datasets in one request and caches the combined response at the edge for up to five minutes. The browser's IndexedDB cache remains available as a fallback.
+The source sheet URLs are defined in `functions/api/data.js`; the main call list comes from the `CallMaterial` sheet in the configured spreadsheet. The API returns all dashboard datasets in one request and caches the combined response at the edge for up to five minutes. The browser's IndexedDB cache remains available as a fallback. The dashboard's manual **Refresh** button bypasses browser and edge caches to request the latest sheet data; automatic refreshes continue using the cache.
 
 ## Local development
 

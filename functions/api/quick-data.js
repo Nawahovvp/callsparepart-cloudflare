@@ -28,13 +28,14 @@ function filterStockRows(rows, materials) {
     });
 }
 
-async function fetchQuickData() {
+async function fetchQuickData(fresh = false) {
     // This endpoint feeds the first useful screen. Bound slow Sheets requests so
     // one stock sheet (or the Nawa backup) cannot hold the whole response open.
     // The full refresh continues in the background and will fill missing values.
     const { data, failures } = await fetchSelectedSources(QUICK_SOURCE_KEYS, {
         timeoutMs: 10000,
-        allowNawaBackup: false
+        allowNawaBackup: false,
+        fresh
     });
     const mainData = data.mainData;
     if (!Array.isArray(mainData) || mainData.length === 0) {
@@ -62,18 +63,21 @@ async function fetchQuickData() {
             data: []
         })),
         failedSources: failures
-    }, 200, {
-        'Cache-Control': 'public, max-age=10, s-maxage=60, stale-while-revalidate=300'
-    });
+    }, 200, fresh
+        ? { 'Cache-Control': 'no-store' }
+        : { 'Cache-Control': 'public, max-age=10, s-maxage=60, stale-while-revalidate=300' });
 }
 
 export async function onRequestGet({ request, waitUntil }) {
+    const fresh = new URL(request.url).searchParams.get('fresh') === '1';
     const cacheKey = new Request(new URL('/api/quick-data', request.url).toString());
-    const cached = await getEdgeCache(cacheKey);
-    if (cached) return cached;
+    if (!fresh) {
+        const cached = await getEdgeCache(cacheKey);
+        if (cached) return cached;
+    }
 
-    const response = await fetchQuickData();
-    if (response.ok && response.headers.get('Cache-Control')?.includes('s-maxage=60')) {
+    const response = await fetchQuickData(fresh);
+    if (!fresh && response.ok && response.headers.get('Cache-Control')?.includes('s-maxage=60')) {
         cacheResponse(waitUntil, cacheKey, response);
     }
     return response;
