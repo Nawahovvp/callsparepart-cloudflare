@@ -130,9 +130,8 @@ export function computeSpareSummaryData(data, rawSources) {
                     }
                     if (d && !isNaN(d.getTime())) {
                         d.setHours(0, 0, 0, 0);
-                        const leadtimeDays = nawaLeadtimeMap.get(matNorm) || 0;
                         const deliveryDate = new Date(d);
-                        deliveryDate.setDate(deliveryDate.getDate() + leadtimeDays);
+                        // Do not add leadtime days; display actual delivery date directly
                         if (!closestDate || deliveryDate < closestDate) {
                             closestDate = deliveryDate;
                             closest = r;

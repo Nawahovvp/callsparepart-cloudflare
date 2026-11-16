@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { Chart, registerables } from 'chart.js';
 import QRCode from 'qrcode';
-import { getCleanTeamPlant, getDesc, normalizeMaterial, matchesDeptGroup, DEPT_GROUPS } from '../utils/helpers';
+import { getCleanTeamPlant, getDesc, normalizeMaterial, matchesDeptGroup, DEPT_GROUPS, PLANT_MAPPING } from '../utils/helpers';
 import { computeSpareSummaryData } from '../utils/syncHelpers';
 import { printStickers } from '../utils/stickerPrint';
 
@@ -876,7 +876,8 @@ export function OutsideRequestModal({ isOpen, onClose, row, onSubmit }) {
 
     const userName = userObj.Name || localStorage.getItem('userName') || 'ไม่ระบุ';
     const employeeCode = userObj.IDRec || localStorage.getItem('username') || '-';
-    const userPlant = userObj.Plant || localStorage.getItem('userPlant') || '-';
+    const rowIdPlant = row["IDPlant"] || PLANT_MAPPING[(row["ค้างหน่วยงาน"] || "").toString().trim()] || "";
+    const userPlant = rowIdPlant || userObj.Plant || localStorage.getItem('userPlant') || '-';
 
     const customer = `${row["Team"] || "-"} (${row["Brand"] || "-"})`;
     const defaultPhone = "0909082850";
@@ -910,10 +911,11 @@ export function OutsideRequestModal({ isOpen, onClose, row, onSubmit }) {
             setIsSuccess(true);
             setTimeout(() => {
                 onClose();
-            }, 800); // Wait 800ms to show success checkmark before closing
+            }, 500); // Wait 500ms to show success checkmark before closing
         } catch (err) {
             console.error('Outside request failed:', err);
             setIsSubmitting(false);
+            alert(err?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
         }
     };
 

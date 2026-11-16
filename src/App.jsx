@@ -32,12 +32,43 @@ const SpareSummaryPage = lazy(() => import('./components/SpareSummaryPage'));
 const GMSummaryPage = lazy(() => import('./components/GMSummaryPage'));
 
 function App() {
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [scrollY, setScrollY] = useState(0);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', 'day');
+    document.body.className = 'theme-day';
+    localStorage.removeItem('app_theme');
+  }, []);
+
+  useEffect(() => {
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const top = window.scrollY || document.documentElement.scrollTop;
+          const max = document.documentElement.scrollHeight - window.innerHeight;
+          setScrollY(top);
+          setScrollProgress(max > 0 ? Math.min(100, Math.max(0, (top / max) * 100)) : 0);
+          setShowScrollTop(top > 220);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [showGMCard, setShowGMCard] = useState(false);
-  const [hideDeptCards, setHideDeptCards] = useState(() => {
-    const saved = localStorage.getItem('hideDeptCards') ?? localStorage.getItem('hideNonStockDept');
-    return saved !== null ? saved === 'true' : true;
+  const [showAllCards, setShowAllCards] = useState(() => {
+    const saved = localStorage.getItem('showAllCards');
+    if (saved !== null) return saved === 'true';
+    const legacyHide = localStorage.getItem('hideDeptCards') ?? localStorage.getItem('hideNonStockDept');
+    return legacyHide !== null ? legacyHide === 'false' : false;
   });
 
   useEffect(() => {
@@ -176,15 +207,16 @@ function App() {
   const totalPages = Math.ceil(sortedData.length / itemsPerPage) || 1;
   const paginatedData = sortedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  // Toggle hide dept cards and filter table
-  const handleToggleHideDeptCards = () => {
-    setHideDeptCards(prev => {
+  // Toggle all summary cards (GM & Dept Group) and show/hide full data
+  const handleToggleAllCards = () => {
+    setShowAllCards(prev => {
       const next = !prev;
-      localStorage.setItem('hideDeptCards', String(next));
+      localStorage.setItem('showAllCards', String(next));
+      localStorage.setItem('hideDeptCards', String(!next));
       if (next) {
-        setDeptGroupFilter('Stock');
-      } else {
         setDeptGroupFilter(null);
+      } else {
+        setDeptGroupFilter('Stock');
       }
       return next;
     });
@@ -199,7 +231,7 @@ function App() {
     if (filter === 'total') {
       setDashboardFilter(null);
       setGmFilter(null);
-      setDeptGroupFilter(hideDeptCards ? 'Stock' : null);
+      setDeptGroupFilter(showAllCards ? null : 'Stock');
       // Reset all other filters
       setTeamPlantFilter('');
       setPendingUnitFilter('');
@@ -340,6 +372,30 @@ function App() {
 
   return (
     <>
+      {/* Scroll Progress Indicator Bar */}
+      <div className="scroll-progress-container" aria-hidden="true">
+        <div
+          className="scroll-progress-bar"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      </div>
+
+      {/* Ambient Parallax Orbs */}
+      <div className="ambient-parallax-bg" aria-hidden="true">
+        <div
+          className="ambient-orb orb-1"
+          style={{ transform: `translate3d(0, ${scrollY * 0.12}px, 0)` }}
+        />
+        <div
+          className="ambient-orb orb-2"
+          style={{ transform: `translate3d(0, ${scrollY * -0.08}px, 0)` }}
+        />
+        <div
+          className="ambient-orb orb-3"
+          style={{ transform: `translate3d(0, ${scrollY * 0.05}px, 0)` }}
+        />
+      </div>
+
       {!isLoggedIn && (
         <LoginModal onLoginSuccess={(user) => {
           const userWithTime = { ...user, loginTime: Date.now() };
@@ -351,15 +407,18 @@ function App() {
 
       {isLoggedIn && (
         <div id="appContent" className="app-content">
-          <AppHeader user={currentUser} onLogout={() => {
-            localStorage.removeItem('user');
-            setIsLoggedIn(false);
-            setCurrentUser(null);
-          }} lastUpdated={lastUpdated} 
-          showGMCard={showGMCard}
-          setShowGMCard={setShowGMCard}
-          hideDeptCards={hideDeptCards}
-          onToggleHideDeptCards={handleToggleHideDeptCards} />
+          <AppHeader
+            user={currentUser}
+            onLogout={() => {
+              localStorage.removeItem('user');
+              setIsLoggedIn(false);
+              setCurrentUser(null);
+            }}
+            lastUpdated={lastUpdated} 
+            showAllCards={showAllCards}
+            onToggleAllCards={handleToggleAllCards}
+            isScrolled={scrollY > 25}
+          />
 
           {error && (
             <div role="alert" style={{
@@ -512,107 +571,120 @@ function App() {
 
           ) : (
             <>
-              {currentUser?.Status === 'Admin' && showGMCard && (
-                <GroupCards
-                  title="สรุปผลตาม GM"
-                  stats={summary.gmStats}
-                  onCardClick={handleDashboardClick}
-                  activeFilter={gmFilter}
-                  prefix="gm_"
-                />
+              {showAllCards && (
+                <div className="scroll-reveal-section delay-1">
+                  <GroupCards
+                    title="สรุปผลตาม GM"
+                    stats={summary.gmStats}
+                    onCardClick={handleDashboardClick}
+                    activeFilter={gmFilter}
+                    prefix="gm_"
+                  />
+                </div>
               )}
 
-              {!hideDeptCards && (
-                <GroupCards
-                  title="สรุปผลตามกลุ่มหน่วยงาน"
-                  stats={summary.deptGroupStats}
-                  onCardClick={handleDashboardClick}
-                  activeFilter={deptGroupFilter}
-                  prefix="dept_"
-                  showZero={true}
-                />
+              {showAllCards && (
+                <div className="scroll-reveal-section delay-2">
+                  <GroupCards
+                    title="สรุปผลตามกลุ่มหน่วยงาน"
+                    stats={summary.deptGroupStats}
+                    onCardClick={handleDashboardClick}
+                    activeFilter={deptGroupFilter}
+                    prefix="dept_"
+                    showZero={true}
+                  />
+                </div>
               )}
 
-              <DashboardCards
-                data={summary}
-                onCardClick={handleDashboardClick}
-                activeCard={dashboardFilter}
-              />
+              <div className="scroll-reveal-section delay-3">
+                <DashboardCards
+                  data={summary}
+                  onCardClick={handleDashboardClick}
+                  activeCard={dashboardFilter}
+                />
+              </div>
 
-              <AnalyticsCards
-                data={summary}
-                onOpenGraph={() => setGraphOpen(true)}
-                onOpenSpareSummary={() => window.open('?page=spare-summary', '_blank')}
-                onOver7Click={handleOver7Click}
-                onWaitingResponseClick={handleWaitingResponseClick}
-                onMaxCardClick={handleMaxCardClick}
-                dashboardFilter={dashboardFilter}
-                callTypeStats={summary.callTypeStats}
-                onCallTypeClick={handleDashboardClick}
-                isAdmin={currentUser?.Status === 'Admin'}
-              />
+              <div className="scroll-reveal-section delay-4">
+                <AnalyticsCards
+                  data={summary}
+                  onOpenGraph={() => setGraphOpen(true)}
+                  onOpenSpareSummary={() => window.open('?page=spare-summary', '_blank')}
+                  onOver7Click={handleOver7Click}
+                  onWaitingResponseClick={handleWaitingResponseClick}
+                  onMaxCardClick={handleMaxCardClick}
+                  dashboardFilter={dashboardFilter}
+                  callTypeStats={summary.callTypeStats}
+                  onCallTypeClick={handleDashboardClick}
+                  isAdmin={currentUser?.Status === 'Admin'}
+                />
+              </div>
 
-              <ControlPanel
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                onSearch={() => setCurrentPage(1)}
-                onPrintTable={async () => {
-                  if (selectedRows.length > 0) {
-                    const selectedData = allData.filter(r => selectedRows.includes(r.id));
-                    try {
-                      const { printStickers } = await import('./utils/stickerPrint');
-                      await printStickers(selectedData);
-                    } catch (error) {
-                      console.error('Sticker printing failed:', error);
-                      alert('ไม่สามารถพิมพ์สติกเกอร์ได้');
+              <div className="scroll-reveal-section delay-5">
+                <ControlPanel
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  onSearch={() => setCurrentPage(1)}
+                  onPrintTable={async () => {
+                    if (selectedRows.length > 0) {
+                      const selectedData = allData.filter(r => selectedRows.includes(r.id));
+                      try {
+                        const { printStickers } = await import('./utils/stickerPrint');
+                        await printStickers(selectedData);
+                      } catch (error) {
+                        console.error('Sticker printing failed:', error);
+                        alert('ไม่สามารถพิมพ์สติกเกอร์ได้');
+                      }
+                    } else {
+                      window.print();
                     }
-                  } else {
-                    window.print();
-                  }
-                }}
-                onExportCSV={() => {
-                  const timestamp = new Date().toISOString().split('T')[0];
-                  exportToCSV(sortedData, `Call_Export_${timestamp}.csv`);
-                }}
-                onOpenSummary={() => setSummaryOpen(true)}
-                onUpdateGuide={() => setUpdateGuideOpen(true)}
-                onRefresh={refreshData}
-                lastUpdated={lastUpdated}
-                availableFilters={availableFilters}
-                teamPlantFilter={teamPlantFilter}
-                pendingUnitFilter={pendingUnitFilter}
-                stockAnswerFilter={stockAnswerFilter}
-                statusCallFilter={statusCallFilter}
-                onTeamPlantChange={(v) => { setTeamPlantFilter(v); setCurrentPage(1); }}
-                onPendingUnitChange={(v) => { setPendingUnitFilter(v); setCurrentPage(1); }}
-                onStockAnswerChange={(v) => { setStockAnswerFilter(v); setCurrentPage(1); }}
-                onStatusCallChange={(v) => { setStatusCallFilter(v); setCurrentPage(1); }}
-              />
+                  }}
+                  onExportCSV={() => {
+                    const timestamp = new Date().toISOString().split('T')[0];
+                    exportToCSV(sortedData, `Call_Export_${timestamp}.csv`);
+                  }}
+                  onOpenSummary={() => setSummaryOpen(true)}
+                  onUpdateGuide={() => setUpdateGuideOpen(true)}
+                  onRefresh={refreshData}
+                  isLoading={isLoading}
+                  lastUpdated={lastUpdated}
+                  availableFilters={availableFilters}
+                  teamPlantFilter={teamPlantFilter}
+                  pendingUnitFilter={pendingUnitFilter}
+                  stockAnswerFilter={stockAnswerFilter}
+                  statusCallFilter={statusCallFilter}
+                  onTeamPlantChange={(v) => { setTeamPlantFilter(v); setCurrentPage(1); }}
+                  onPendingUnitChange={(v) => { setPendingUnitFilter(v); setCurrentPage(1); }}
+                  onStockAnswerChange={(v) => { setStockAnswerFilter(v); setCurrentPage(1); }}
+                  onStatusCallChange={(v) => { setStatusCallFilter(v); setCurrentPage(1); }}
+                />
+              </div>
 
-              <DataTable
-                data={paginatedData}
-                isLoading={isLoading}
-                currentPage={currentPage}
-                itemsPerPage={itemsPerPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-                onItemsPerPageChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}
-                selectedRows={selectedRows}
-                onSelectAll={(e) => setSelectedRows(e.target.checked ? paginatedData.map(r => r.id) : [])}
-                onSelectRow={(id) => setSelectedRows(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id])}
-                sortConfig={sortConfig}
-                onSort={handleSort}
-                onPoClick={handlePoClick}
-                onPrClick={handlePrClick}
-                onOtherPlantClick={handleOtherPlantClick}
-                onRebuiltClick={handleRebuiltClick}
-                onStatusXClick={handleStatusXClick}
-                onStatusGroupClick={handleStatusGroupClick}
-                onDetailClick={handleDetailClick}
-                onEngClick={handleEngClick}
-                onNawaClick={handleNawaClick}
-                onTicketClick={handleTicketClick}
-              />
+              <div className="scroll-reveal-section delay-6">
+                <DataTable
+                  data={paginatedData}
+                  isLoading={isLoading}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}
+                  selectedRows={selectedRows}
+                  onSelectAll={(e) => setSelectedRows(e.target.checked ? paginatedData.map(r => r.id) : [])}
+                  onSelectRow={(id) => setSelectedRows(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id])}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  onPoClick={handlePoClick}
+                  onPrClick={handlePrClick}
+                  onOtherPlantClick={handleOtherPlantClick}
+                  onRebuiltClick={handleRebuiltClick}
+                  onStatusXClick={handleStatusXClick}
+                  onStatusGroupClick={handleStatusGroupClick}
+                  onDetailClick={handleDetailClick}
+                  onEngClick={handleEngClick}
+                  onNawaClick={handleNawaClick}
+                  onTicketClick={handleTicketClick}
+                />
+              </div>
             </>
           )}
 
@@ -751,6 +823,35 @@ function App() {
               />
             )}
           </Suspense>
+
+          {/* Interactive Floating Back-to-Top Button with Circular Progress Ring */}
+          <button
+            type="button"
+            className={`floating-back-to-top ${showScrollTop ? 'visible' : ''}`}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            title="เลื่อนขึ้นด้านบนสุด (Scroll to Top)"
+            aria-label="เลื่อนขึ้นด้านบนสุด"
+          >
+            <svg className="progress-ring" width="46" height="46" viewBox="0 0 46 46">
+              <circle
+                className="progress-ring-track"
+                cx="23"
+                cy="23"
+                r="19"
+              />
+              <circle
+                className="progress-ring-fill"
+                cx="23"
+                cy="23"
+                r="19"
+                style={{
+                  strokeDasharray: 119.38,
+                  strokeDashoffset: 119.38 - (119.38 * (scrollProgress || 0)) / 100
+                }}
+              />
+            </svg>
+            <i className="fas fa-arrow-up"></i>
+          </button>
         </div>
       )}
     </>

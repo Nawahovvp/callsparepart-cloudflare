@@ -143,7 +143,7 @@ async function fetchJson(url, timeoutMs = 25000, fresh = false) {
 
 export async function fetchSource(
     [key, url],
-    { timeoutMs = 25000, allowNawaBackup = true, nawaBackupUrl = NAWA_BACKUP_URL, fresh = false } = {}
+    { timeoutMs = 35000, allowNawaBackup = true, nawaBackupUrl = NAWA_BACKUP_URL, fresh = false } = {}
 ) {
     try {
         return [key, await fetchJson(url, timeoutMs, fresh), null];
@@ -209,10 +209,10 @@ async function fetchAllSources(nawaBackupUrl, fresh = false) {
 
     const sources = SOURCES.slice(1).filter(([key]) => key !== 'mainSapData');
     let nextIndex = 0;
-    const workers = Array.from({ length: 2 }, async () => {
+    const workers = Array.from({ length: 4 }, async () => {
         while (nextIndex < sources.length) {
             const source = sources[nextIndex++];
-            const [key, data, error] = await fetchSource(source, { nawaBackupUrl, fresh });
+            const [key, data, error] = await fetchSource(source, { nawaBackupUrl, fresh, timeoutMs: 35000 });
             results.set(key, filterSourceData(key, data, sourceMaterials, tickets));
             if (error) {
                 console.error(`Data source ${key} failed:`, error);
@@ -256,8 +256,19 @@ export async function onRequestGet({ request, waitUntil, env }) {
 
     const nawaBackupUrl = env?.nawa_backup_url || env?.NAWA_BACKUP_URL;
     const response = await fetchAllSources(nawaBackupUrl, fresh);
-    if (response.ok && response.headers.get('Cache-Control')?.includes('s-maxage=300')) {
-        cacheResponse(waitUntil, cacheKey, response);
+    if (response.ok) {
+        if (!fresh && response.headers.get('Cache-Control')?.includes('s-maxage=300')) {
+            cacheResponse(waitUntil, cacheKey, response);
+        } else if (fresh) {
+            const cacheableResponse = new Response(response.clone().body, {
+                status: response.status,
+                headers: {
+                    ...Object.fromEntries(response.headers),
+                    'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600'
+                }
+            });
+            cacheResponse(waitUntil, cacheKey, cacheableResponse);
+        }
     }
     return response;
 }

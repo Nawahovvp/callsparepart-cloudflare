@@ -42,7 +42,7 @@ export async function loginUser(username, password) {
     });
 }
 
-function mergeCachedSources(data, cachedData, fresh = false) {
+function mergeCachedSources(data, cachedData, fresh = false, latestQuickData = null) {
     const result = { ...data };
     const failedSources = new Set(data.failedSources || []);
     const sourceKeys = [
@@ -52,18 +52,26 @@ function mergeCachedSources(data, cachedData, fresh = false) {
     ];
 
     sourceKeys.forEach((key) => {
-        if (
-            Array.isArray(result[key]) &&
-            result[key].length === 0 &&
-            Array.isArray(cachedData[key]) &&
-            cachedData[key].length > 0 &&
-            (!fresh || failedSources.has(key))
-        ) {
-            result[key] = cachedData[key];
+        const isMissing = !Array.isArray(result[key]) || result[key].length === 0;
+        const isFailed = failedSources.has(key);
+        if (isMissing || isFailed) {
+            // First priority: If latestQuickData already has fresh data in this session, use it!
+            if (Array.isArray(latestQuickData?.[key]) && latestQuickData[key].length > 0) {
+                result[key] = latestQuickData[key];
+                return;
+            }
+            // Second priority: Cache fallback (only if not fresh, or if this source explicitly failed)
+            if (
+                Array.isArray(cachedData?.[key]) &&
+                cachedData[key].length > 0 &&
+                (!fresh || isFailed)
+            ) {
+                result[key] = cachedData[key];
+            }
         }
     });
 
-    if (Array.isArray(result.engData) && Array.isArray(cachedData.engData)) {
+    if (Array.isArray(result.engData) && Array.isArray(cachedData?.engData)) {
         const cachedSheets = new Map(cachedData.engData.map((sheet) => [sheet.sourceId, sheet]));
         result.engData = result.engData.map((sheet) => {
             const cachedSheet = cachedSheets.get(sheet.sourceId);
@@ -78,7 +86,7 @@ function mergeCachedSources(data, cachedData, fresh = false) {
     return result;
 }
 
-export async function fetchAllData({ fresh = false } = {}) {
+export async function fetchAllData({ fresh = false, latestQuickData = null } = {}) {
     const data = await requestJson(fresh ? '/api/data?fresh=1' : '/api/data', {
         cache: fresh ? 'no-store' : 'default',
         headers: fresh ? { 'Cache-Control': 'no-cache' } : undefined
@@ -87,7 +95,7 @@ export async function fetchAllData({ fresh = false } = {}) {
         console.warn('[API] Some data sources failed:', data.failedSources);
     }
     const cachedData = await loadAllFromCache();
-    return mergeCachedSources(data, cachedData, fresh);
+    return mergeCachedSources(data, cachedData, fresh, latestQuickData);
 }
 
 export async function fetchQuickData({ fresh = false } = {}) {

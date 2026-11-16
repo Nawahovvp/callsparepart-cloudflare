@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export default function AppHeader({ user, onLogout, lastUpdated, showGMCard, setShowGMCard, hideDeptCards, onToggleHideDeptCards }) {
+export default function AppHeader({
+    user,
+    onLogout,
+    lastUpdated,
+    showAllCards = false,
+    onToggleAllCards,
+    isScrolled = false
+}) {
     const [showQuickSettings, setShowQuickSettings] = useState(false);
     const popoverRef = useRef(null);
     const buttonRef = useRef(null);
@@ -28,9 +35,12 @@ export default function AppHeader({ user, onLogout, lastUpdated, showGMCard, set
     };
 
     return (
-        <header className="app-header">
+        <header className={`app-header ${isScrolled ? 'scrolled' : ''}`}>
             <div className="brand-block">
-                <div className="brand-logo">SP</div>
+                <div className="brand-logo">
+                    <span>SP</span>
+                    <div className="brand-logo-glow"></div>
+                </div>
                 <div className="brand-text">
                     <div className="brand-title">รายการอะไหล่ Call ค้างคลังสินค้า Sparepare</div>
                     <div className="brand-meta" style={{ display: lastUpdated ? 'block' : 'none' }}>
@@ -38,9 +48,11 @@ export default function AppHeader({ user, onLogout, lastUpdated, showGMCard, set
                     </div>
                 </div>
             </div>
+
             <div className="header-actions">
                 <div id="syncProgressText" style={{ fontSize: '11px', color: '#ced4da', marginRight: '5px', display: 'none', whiteSpace: 'nowrap' }}></div>
                 <div id="syncStatus" className="sync-status" title="สถานะการซิงค์ข้อมูล"></div>
+
                 <button
                     ref={buttonRef}
                     id="quickSettingButton"
@@ -53,7 +65,7 @@ export default function AppHeader({ user, onLogout, lastUpdated, showGMCard, set
                 {showQuickSettings && (
                     <div ref={popoverRef} id="quickSettingPopover" className="quick-setting-popover show">
                         <div className="sheet-header">
-                            <div className="sheet-title">โปรไฟล์</div>
+                            <div className="sheet-title">โปรไฟล์ & การตั้งค่า</div>
                             <button className="sheet-close" onClick={() => setShowQuickSettings(false)}>
                                 <i className="fas fa-times"></i>
                             </button>
@@ -75,26 +87,30 @@ export default function AppHeader({ user, onLogout, lastUpdated, showGMCard, set
                                 <span style={{ marginTop: '0' }}>หน่วยงาน: {user?.['หน่วยงาน'] || '-'} • ทีม: {user?.Unit || '-'} • Plant {user?.Plant || '-'}</span>
                             </div>
                         </div>
+
+                        {/* Combined Toggle Switch: GM Cards & Department Group Cards */}
+                        <div className="sheet-toggle-row">
+                            <div className="sheet-toggle-info">
+                                <div className="sheet-toggle-title">
+                                    <i className="fas fa-layer-group" style={{ marginRight: '8px', color: '#3b82f6' }}></i>
+                                    แสดงการ์ดสรุปทั้งหมด
+                                </div>
+                                <div className="sheet-toggle-desc">
+                                    {showAllCards ? 'เปิดแสดงการ์ด GM และกลุ่มหน่วยงาน' : 'ปิดการ์ด GM และกลุ่มหน่วยงาน'}
+                                </div>
+                            </div>
+                            <label className="toggle-switch" title={showAllCards ? 'คลิกเพื่อปิด' : 'คลิกเพื่อเปิด'}>
+                                <input
+                                    type="checkbox"
+                                    checked={showAllCards}
+                                    onChange={onToggleAllCards}
+                                />
+                                <span className="toggle-slider"></span>
+                            </label>
+                        </div>
+
                         <div className="sheet-actions">
-                            <button 
-                                className="header-button" 
-                                onClick={onToggleHideDeptCards} 
-                                style={{ width: '100%', marginBottom: '10px', justifyContent: 'center' }}
-                            >
-                                <i className={`fas fa-${hideDeptCards ? 'eye' : 'eye-slash'}`}></i>
-                                <span>{hideDeptCards ? 'ไม่ซ่อน การ์ด ค้างหน่วยงาน' : 'ซ่อน การ์ด ค้างหน่วยงาน'}</span>
-                            </button>
-                            {user?.Status === 'Admin' && (
-                                <button 
-                                    className="header-button" 
-                                    onClick={() => setShowGMCard(!showGMCard)} 
-                                    style={{ width: '100%', marginBottom: '10px', justifyContent: 'center' }}
-                                >
-                                    <i className={`fas fa-${showGMCard ? 'eye-slash' : 'eye'}`}></i>
-                                    <span>{showGMCard ? 'ซ่อน การ์ด GM' : 'แสดง การ์ด GM'}</span>
-                                </button>
-                            )}
-                            <button className="header-button danger" onClick={handleLogout}>
+                            <button className="header-button danger" onClick={handleLogout} style={{ width: '100%', justifyContent: 'center' }}>
                                 <i className="fas fa-sign-out-alt"></i><span>ออกจากระบบ</span>
                             </button>
                         </div>

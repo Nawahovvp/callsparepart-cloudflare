@@ -158,6 +158,7 @@ export default function ControlPanel({
     onOpenSummary,
     onUpdateGuide,
     onRefresh,
+    isLoading = false,
     lastUpdated,
     availableFilters,
     // Single-select filter values
@@ -241,8 +242,14 @@ export default function ControlPanel({
                 <button id="updateGuideButton" className="action-button ghost" onClick={onUpdateGuide}>
                     <i className="fas fa-info-circle"></i> วิธีอัพข้อมูล
                 </button>
-                <button id="refreshButton" className="action-button ghost" onClick={onRefresh}>
-                    <i className="fas fa-sync-alt"></i> Refresh
+                <button
+                    id="refreshButton"
+                    className={`action-button ghost ${isLoading ? 'is-loading' : ''}`}
+                    onClick={onRefresh}
+                    disabled={isLoading}
+                    title={isLoading ? 'กำลังโหลดข้อมูล...' : 'รีเฟรชข้อมูลล่าสุด'}
+                >
+                    <i className={`fas fa-sync-alt ${isLoading ? 'fa-spin' : ''}`}></i> {isLoading ? 'Refreshing...' : 'Refresh'}
                 </button>
             </div>
         </div>

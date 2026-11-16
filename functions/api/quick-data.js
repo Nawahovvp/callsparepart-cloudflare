@@ -77,8 +77,19 @@ export async function onRequestGet({ request, waitUntil }) {
     }
 
     const response = await fetchQuickData(fresh);
-    if (!fresh && response.ok && response.headers.get('Cache-Control')?.includes('s-maxage=60')) {
-        cacheResponse(waitUntil, cacheKey, response);
+    if (response.ok) {
+        if (!fresh && response.headers.get('Cache-Control')?.includes('s-maxage=60')) {
+            cacheResponse(waitUntil, cacheKey, response);
+        } else if (fresh) {
+            const cacheableResponse = new Response(response.clone().body, {
+                status: response.status,
+                headers: {
+                    ...Object.fromEntries(response.headers),
+                    'Cache-Control': 'public, max-age=10, s-maxage=60, stale-while-revalidate=300'
+                }
+            });
+            cacheResponse(waitUntil, cacheKey, cacheableResponse);
+        }
     }
     return response;
 }

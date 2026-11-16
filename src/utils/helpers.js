@@ -187,11 +187,25 @@ function computeRequestQuantities(data) {
         const cachedStr = localStorage.getItem('app_cached_requestQuantities');
         if (cachedStr) {
             const cached = JSON.parse(cachedStr);
+            const now = Date.now();
+            let changed = false;
             Object.keys(cached).forEach(mat => {
-                if (cached[mat] > 0) {
-                    result[mat] = (result[mat] || 0) + cached[mat];
+                const entry = cached[mat];
+                const qty = typeof entry === 'object' && entry !== null ? entry.qty : entry;
+                const ts = typeof entry === 'object' && entry !== null ? entry.timestamp : null;
+                // Expire optimistic cache entries older than 15 minutes
+                if (ts && (now - ts > 15 * 60 * 1000)) {
+                    delete cached[mat];
+                    changed = true;
+                    return;
+                }
+                if (qty > 0) {
+                    result[mat] = (result[mat] || 0) + qty;
                 }
             });
+            if (changed) {
+                localStorage.setItem('app_cached_requestQuantities', JSON.stringify(cached));
+            }
         }
     } catch (e) { console.warn("Cache parse err", e); }
 
@@ -200,11 +214,25 @@ function computeRequestQuantities(data) {
         const plantCacheStr = localStorage.getItem('app_cached_requestByPlant');
         if (plantCacheStr) {
             const plantCached = JSON.parse(plantCacheStr);
+            const now = Date.now();
+            let changed = false;
             Object.keys(plantCached).forEach(key => {
-                if (plantCached[key] > 0) {
-                    byPlant[key] = (byPlant[key] || 0) + plantCached[key];
+                const entry = plantCached[key];
+                const qty = typeof entry === 'object' && entry !== null ? entry.qty : entry;
+                const ts = typeof entry === 'object' && entry !== null ? entry.timestamp : null;
+                // Expire optimistic cache entries older than 15 minutes
+                if (ts && (now - ts > 15 * 60 * 1000)) {
+                    delete plantCached[key];
+                    changed = true;
+                    return;
+                }
+                if (qty > 0) {
+                    byPlant[key] = (byPlant[key] || 0) + qty;
                 }
             });
+            if (changed) {
+                localStorage.setItem('app_cached_requestByPlant', JSON.stringify(plantCached));
+            }
         }
     } catch (e) { console.warn("Plant cache parse err", e); }
 
@@ -375,7 +403,7 @@ export function parseCallCreateDate(value) {
     if (value === null || value === undefined || value === '') return null;
 
     const dateText = String(value).trim();
-    const dayFirstMatch = dateText.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+    const dayFirstMatch = dateText.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
     if (dayFirstMatch) {
         const [, first, second, sourceYear, hours = '0', minutes = '0', seconds = '0'] = dayFirstMatch;
         const firstNumber = Number(first);

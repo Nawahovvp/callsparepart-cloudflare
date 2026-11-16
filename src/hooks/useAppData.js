@@ -19,26 +19,65 @@ export function useAppData() {
     const [statusCallFilter, setStatusCallFilter] = useState('');
     const [gmFilter, setGmFilter] = useState(null); // New state for hierarchical filtering
     const [deptGroupFilter, setDeptGroupFilter] = useState(() => {
-        const saved = localStorage.getItem('hideDeptCards') ?? localStorage.getItem('hideNonStockDept');
-        return (saved !== null ? saved === 'true' : true) ? 'Stock' : null;
+        const saved = localStorage.getItem('showAllCards');
+        if (saved !== null) return saved === 'true' ? null : 'Stock';
+        const legacy = localStorage.getItem('hideDeptCards') ?? localStorage.getItem('hideNonStockDept');
+        return (legacy !== null ? legacy === 'true' : true) ? 'Stock' : null;
     });
 
     const hasCacheLoaded = useRef(false);
     const inFlightFetch = useRef(null);
     const fetchGeneration = useRef(0);
     const fullDataRef = useRef(null);
+    const latestUpdateDateRef = useRef(null);
+    const latestMainDataRef = useRef(null);
 
     // Process fetched data (shared between cache load and server load)
     const applyData = useCallback((fetchResult, saveCache = false, isPartial = false) => {
+        let candidateMainData = fetchResult?.mainData;
+
+        // Find latest update date in incoming mainData
+        const incomingLatestUpdate = Array.isArray(candidateMainData)
+            ? candidateMainData.reduce((latest, row) => {
+                const value = row?.['วันที่อัปเดต'];
+                const date = parseCallCreateDate(value);
+                return date && (!latest || date > latest.date)
+                    ? { date, value: String(value).trim() }
+                    : latest;
+            }, null)
+            : null;
+
+        // Guard against older data reverting a newer update (e.g. from stale cache or edge cache)
+        let effectiveMainData = candidateMainData;
+        if (
+            latestUpdateDateRef.current &&
+            incomingLatestUpdate?.date &&
+            incomingLatestUpdate.date < latestUpdateDateRef.current &&
+            latestMainDataRef.current?.length
+        ) {
+            console.warn(
+                `[applyData] Incoming mainData update (${incomingLatestUpdate.value}) is older than current; preserving newer mainData`
+            );
+            effectiveMainData = latestMainDataRef.current;
+        } else if (incomingLatestUpdate?.date) {
+            latestUpdateDateRef.current = incomingLatestUpdate.date;
+            latestMainDataRef.current = effectiveMainData;
+            setLastUpdated(incomingLatestUpdate.value || null);
+        } else if (!latestUpdateDateRef.current && incomingLatestUpdate?.value) {
+            setLastUpdated(incomingLatestUpdate.value);
+        }
+
         const completeData = isPartial && fullDataRef.current
             ? {
+                ...fullDataRef.current,
                 ...fetchResult,
-                ...Object.fromEntries([
-                    'poData', 'prData', 'mainSapData', 'plantStockData',
-                    'newPartData', 'projectData', 'teamPlantData', 'engData'
-                ].map(key => [key, fullDataRef.current[key]]))
+                mainData: effectiveMainData
             }
-            : fetchResult;
+            : {
+                ...fetchResult,
+                mainData: effectiveMainData
+            };
+
         const {
             mainData, requestData, poData, prData, mainSapData,
             vipaData, nawaData, plantStockData, newPartData,
@@ -47,18 +86,8 @@ export function useAppData() {
 
         // Skip processing if essential data is missing (e.g., empty cache)
         if (!mainData || mainData.length === 0) return false;
-        if (!isPartial) fullDataRef.current = fetchResult;
 
-        const latestUpdate = Array.isArray(mainData)
-            ? mainData.reduce((latest, row) => {
-                const value = row?.['วันที่อัปเดต'];
-                const date = parseCallCreateDate(value);
-                return date && (!latest || date > latest.date)
-                    ? { date, value: String(value).trim() }
-                    : latest;
-            }, null)
-            : null;
-        setLastUpdated(latestUpdate?.value || null);
+        fullDataRef.current = completeData;
 
         const processed = processRawData(
             mainData, requestData, poData, prData, mainSapData,
@@ -74,44 +103,54 @@ export function useAppData() {
                 mainData, requestData, poData, prData, mainSapData, 
                 vipaData, nawaData, plantStockData, newPartData, 
                 projectData, teamPlantData, engData
-                });
+            });
         }
 
-        localStorage.removeItem('app_cached_requestQuantities');
-        localStorage.removeItem('app_cached_requestByPlant');
         return true;
     }, []);
 
     const fetchData = useCallback(async (showLoading = true, forceFresh = false) => {
-        // Routine refreshes reuse active work; a manual fresh refresh runs after it.
-        if (inFlightFetch.current) {
-            if (!forceFresh) return inFlightFetch.current;
-            await inFlightFetch.current;
-            if (inFlightFetch.current) return inFlightFetch.current;
+        // Routine refreshes reuse active work, but a manual fresh refresh takes priority immediately
+        if (inFlightFetch.current && !forceFresh) {
+            return inFlightFetch.current;
         }
 
         if (showLoading) setIsLoading(true);
         setError(null);
         const generation = ++fetchGeneration.current;
+
+        let latestQuick = null;
         const request = (async () => {
             try {
                 try {
                     const quickResult = await fetchQuickData({ fresh: forceFresh });
                     if (fetchGeneration.current !== generation) return;
-                    applyData(quickResult, false, true);
-                    void saveToCache('quickData', {
-                        mainData: quickResult.mainData,
-                        requestData: quickResult.requestData,
-                        vipaData: quickResult.vipaData,
-                        nawaData: quickResult.nawaData
-                    });
+                    if (quickResult?.mainData?.length) {
+                        latestQuick = quickResult;
+                        applyData(quickResult, false, true);
+                        // Save quickData and individual caches immediately so fresh data is persisted
+                        void saveToCache('quickData', {
+                            mainData: quickResult.mainData,
+                            requestData: quickResult.requestData,
+                            vipaData: quickResult.vipaData,
+                            nawaData: quickResult.nawaData
+                        });
+                        void saveToCache('mainData', quickResult.mainData);
+                        if (quickResult.requestData?.length) void saveToCache('requestData', quickResult.requestData);
+                        if (quickResult.vipaData?.length) void saveToCache('vipaData', quickResult.vipaData);
+                        if (quickResult.nawaData?.length) void saveToCache('nawaData', quickResult.nawaData);
+                    }
                     if (showLoading) setIsLoading(false);
                 } catch (quickError) {
                     console.warn('[API] Quick data fetch failed; falling back to full data:', quickError);
                 }
 
-                const result = await fetchAllData({ fresh: forceFresh });
+                const result = await fetchAllData({ fresh: forceFresh, latestQuickData: latestQuick });
                 if (fetchGeneration.current === generation) {
+                    // Ensure fresh quick data is not lost if full fetch had partial failures
+                    if ((!result.mainData || result.mainData.length === 0) && latestQuick?.mainData?.length) {
+                        result.mainData = latestQuick.mainData;
+                    }
                     const applied = applyData(result, true);
                     if (!applied) {
                         setError('ไม่สามารถดึงข้อมูลจากเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง');
@@ -120,10 +159,14 @@ export function useAppData() {
                 }
             } catch (err) {
                 console.error(err);
-                setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+                if (!latestQuick?.mainData?.length && !fullDataRef.current?.mainData?.length) {
+                    setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+                }
             } finally {
                 if (showLoading) setIsLoading(false);
-                inFlightFetch.current = null;
+                if (inFlightFetch.current === request) {
+                    inFlightFetch.current = null;
+                }
             }
         })();
         inFlightFetch.current = request;
@@ -399,6 +442,8 @@ export function useAppData() {
                 throw new Error("Invalid material or quantity");
             }
 
+            const now = Date.now();
+
             // 1. Optimistic Update Local Cache (requestQuantities by material)
             let currentCache = {};
             try {
@@ -409,16 +454,19 @@ export function useAppData() {
             } catch (e) {
                 console.error("Error reading cache", e);
             }
-            const previousQty = currentCache[localKey] || 0;
-            currentCache[localKey] = previousQty + localQty;
+            const prevEntry = currentCache[localKey];
+            const previousQty = typeof prevEntry === 'object' && prevEntry !== null ? (prevEntry.qty || 0) : (prevEntry || 0);
+            currentCache[localKey] = {
+                qty: previousQty + localQty,
+                timestamp: now
+            };
             localStorage.setItem('app_cached_requestQuantities', JSON.stringify(currentCache));
 
             // 1b. Optimistic Update Local Cache (requestQuantities by plant+material)
-            let plantCache;
+            let plantCache = {};
             let plantKey;
-            let previousPlantQty;
-            if (plant) {
-                plantCache = {};
+            let previousPlantQty = 0;
+            if (plant && plant !== '-') {
                 try {
                     const plantCacheText = localStorage.getItem('app_cached_requestByPlant');
                     if (plantCacheText) {
@@ -428,16 +476,34 @@ export function useAppData() {
                     console.error("Error reading plant cache", e);
                 }
                 plantKey = `${plant}_${localKey}`;
-                previousPlantQty = plantCache[plantKey] || 0;
-                plantCache[plantKey] = previousPlantQty + localQty;
+                const prevPlantEntry = plantCache[plantKey];
+                previousPlantQty = typeof prevPlantEntry === 'object' && prevPlantEntry !== null ? (prevPlantEntry.qty || 0) : (prevPlantEntry || 0);
+                plantCache[plantKey] = {
+                    qty: previousPlantQty + localQty,
+                    timestamp: now
+                };
                 localStorage.setItem('app_cached_requestByPlant', JSON.stringify(plantCache));
             }
 
-            // Force refresh of the processed data to reflect the new Request quantity
-            // A lightweight way is to re-run the processor on the existing state, but fetchData(false) is safer
-            fetchData(false);
+            // 2. IMMEDIATE OPTIMISTIC UI UPDATE in processedData
+            setProcessedData(prevData => {
+                return prevData.map(row => {
+                    const mat = normalizeMaterial(row["Material"]);
+                    if (mat !== localKey) return row;
 
-            // Get current user for logging
+                    const rowIdPlant = PLANT_MAPPING[(row["ค้างหน่วยงาน"] || "").toString().trim()] || row.IDPlant || "";
+                    if (!plant || plant === '-' || !rowIdPlant || rowIdPlant === plant) {
+                        const currentReq = parseFloat(row["Request"]) || 0;
+                        return {
+                            ...row,
+                            Request: currentReq + localQty
+                        };
+                    }
+                    return row;
+                });
+            });
+
+            // 3. BACKGROUND UPDATE: Send outside request asynchronously to Google Apps Script
             let userStr = '-';
             try {
                 const u = JSON.parse(localStorage.getItem('user'));
@@ -447,19 +513,40 @@ export function useAppData() {
             }
 
             const logPayload = { ...payload, user: userStr };
-            try {
-                await sendOutsideRequest(logPayload);
-                return true;
-            } catch (error) {
-                currentCache[localKey] = previousQty;
-                localStorage.setItem('app_cached_requestQuantities', JSON.stringify(currentCache));
-                if (plantCache && plantKey) {
-                    plantCache[plantKey] = previousPlantQty;
-                    localStorage.setItem('app_cached_requestByPlant', JSON.stringify(plantCache));
+            (async () => {
+                try {
+                    await sendOutsideRequest(logPayload);
+                    console.log('[OutsideRequest] Background save succeeded');
+                    // Give Google Sheets a few seconds to commit the row, then quietly refresh in background
+                    setTimeout(() => {
+                        fetchData(false, true);
+                    }, 4000);
+                } catch (error) {
+                    console.error('[OutsideRequest] Background save failed:', error);
+                    // Rollback optimistic cache if background request failed
+                    try {
+                        if (previousQty > 0) {
+                            currentCache[localKey] = { qty: previousQty, timestamp: now };
+                        } else {
+                            delete currentCache[localKey];
+                        }
+                        localStorage.setItem('app_cached_requestQuantities', JSON.stringify(currentCache));
+                        if (plantKey) {
+                            if (previousPlantQty > 0) {
+                                plantCache[plantKey] = { qty: previousPlantQty, timestamp: now };
+                            } else {
+                                delete plantCache[plantKey];
+                            }
+                            localStorage.setItem('app_cached_requestByPlant', JSON.stringify(plantCache));
+                        }
+                    } catch (e) {
+                        console.error('Rollback error:', e);
+                    }
+                    fetchData(false);
                 }
-                fetchData(false);
-                throw error;
-            }
+            })();
+
+            return true;
         }
     };
 }
