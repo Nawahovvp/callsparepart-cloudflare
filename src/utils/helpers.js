@@ -504,7 +504,7 @@ export function processRawData(
                 DayRepair: elapsedDays,
                 Brand: row["Store Name"] || row.Brand,
                 "Call Type": row["Call"] || row["Call Type"],
-                "คลังตอบ": row["คลังตอบ"] || row["เหตุผลตอบกลับ"] || "",
+                "คลังตอบ": row["คลังตอบ"] || "",
                 UserAns: row["ผู้ตอบ"] || row.UserAns,
                 TimeLine: details,
                 "จำนวน": callMaterialQuantity ?? detailQuantity ?? "1",
