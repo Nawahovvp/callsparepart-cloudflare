@@ -206,7 +206,7 @@ export default function RightMenuBar({
                                     activeValue={teamPlantFilter}
                                     onSelect={onTeamPlantChange}
                                     sectioned={true}
-                                    defaultOpen={true}
+                                    defaultOpen={false}
                                 />
                                 <DrawerFilterGroup
                                     title="ค้างหน่วยงาน"
@@ -214,7 +214,7 @@ export default function RightMenuBar({
                                     options={availableFilters?.pendingUnit}
                                     activeValue={pendingUnitFilter}
                                     onSelect={onPendingUnitChange}
-                                    noWaitingByKey={availableFilters?.pendingUnitNoWaiting}
+                                    noWaitingByKey={availableFilters?.pendingUnitAllDone}
                                     defaultOpen={true}
                                 />
                                 <DrawerFilterGroup
@@ -224,7 +224,7 @@ export default function RightMenuBar({
                                     activeValue={stockAnswerFilter}
                                     onSelect={onStockAnswerChange}
                                     useStatusColors={true}
-                                    defaultOpen={true}
+                                    defaultOpen={false}
                                 />
                                 {callTypeStats.some(item => item.value > 0) && (
                                     <DrawerFilterGroup
@@ -234,7 +234,7 @@ export default function RightMenuBar({
                                         percentByKey={Object.fromEntries(callTypeStats.filter(i => i.value > 0).map(i => [i.label, i.percent]))}
                                         activeValue={dashboardFilter?.startsWith('calltype_') ? dashboardFilter.replace('calltype_', '') : ''}
                                         onSelect={(val) => onCallTypeClick?.(val ? `calltype_${val}` : dashboardFilter)}
-                                        defaultOpen={true}
+                                        defaultOpen={false}
                                     />
                                 )}
                             </div>

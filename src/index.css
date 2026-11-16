@@ -5735,13 +5735,20 @@
 }
 
 .drawer-filter-chip.clear {
-    background: #f0fdf4;
+    background: #dcfce7;
     border-color: #86efac;
+    color: #166534;
+}
+
+.drawer-filter-chip.clear:hover {
+    background: #bbf7d0;
+    border-color: #4ade80;
 }
 
 .drawer-filter-chip.clear.active {
     background: #16a34a;
     border-color: #16a34a;
+    color: #ffffff;
 }
 
 .drawer-chip-count {

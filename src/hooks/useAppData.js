@@ -345,13 +345,27 @@ export function useAppData() {
         return statusByUnit;
     }, []);
 
+    const getPendingUnitAllDoneStatus = useCallback((data) => {
+        const allDoneByUnit = {};
+        data.forEach(row => {
+            const unit = String(row["ค้างหน่วยงาน"] || "").trim();
+            if (!unit || unit === "ไม่ระบุ") return;
+            if (!(unit in allDoneByUnit)) allDoneByUnit[unit] = true;
+            if (String(row["คลังตอบ"] || "").trim() !== "ดำเนินการแล้ว") {
+                allDoneByUnit[unit] = false;
+            }
+        });
+        return allDoneByUnit;
+    }, []);
+
     const availableFilters = useMemo(() => ({
         teamPlant: computeFilterOptions(teamPlantFilterData, null, (row) => getCleanTeamPlant(row["TeamPlant"])),
         pendingUnit: computeFilterOptions(pendingFilterData, "ค้างหน่วยงาน"),
         pendingUnitHasWaiting: getPendingUnitWaitingStatus(pendingFilterData),
+        pendingUnitAllDone: getPendingUnitAllDoneStatus(pendingFilterData),
         stockAnswer: computeFilterOptions(stockFilterData, "คลังตอบ"),
         statusCall: computeFilterOptions(statusFilterData, null, (row) => row.StatusX || "")
-    }), [teamPlantFilterData, pendingFilterData, stockFilterData, statusFilterData, computeFilterOptions, getPendingUnitWaitingStatus]);
+    }), [teamPlantFilterData, pendingFilterData, stockFilterData, statusFilterData, computeFilterOptions, getPendingUnitWaitingStatus, getPendingUnitAllDoneStatus]);
 
     // Optimistic update for DOM re-render without full fetch
     const updateRowLocally = useCallback((ticketNumber, material, updates) => {
