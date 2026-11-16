@@ -56,6 +56,10 @@ export default function DashboardCards({ data = {}, onCardClick, activeCard }) {
         successPercent: data.successPercent || '0%',
         nawaVipa: data.nawaVipa || 0,
         nawaVipaPercent: data.nawaVipaPercent || '0%',
+        engInTeam: data.engInTeam || 0,
+        engInTeamPercent: data.engInTeamPercent || '0%',
+        rebuiltStock: data.rebuiltStock || 0,
+        rebuiltStockPercent: data.rebuiltStockPercent || '0%',
         spacial: data.spacial || 0,
         spacialPercent: data.spacialPercent || '0%',
         request: data.request || 0,
@@ -87,6 +91,12 @@ export default function DashboardCards({ data = {}, onCardClick, activeCard }) {
             )}
             {summary.nawaVipa > 0 && (
                 <DashboardCard title="Call (เบิกศูนย์อะไหล่)" value={summary.nawaVipa} percent={summary.nawaVipaPercent} idBase="nawaVipa" onClick={onCardClick} isActive={isActive('nawaVipa')} />
+            )}
+            {summary.engInTeam > 0 && (
+                <DashboardCard title="Call (มีอะไหล่ในทีม)" value={summary.engInTeam} percent={summary.engInTeamPercent} idBase="engInTeam" onClick={onCardClick} isActive={isActive('engInTeam')} />
+            )}
+            {summary.rebuiltStock > 0 && (
+                <DashboardCard title="Call (เบิกทดแทน)" value={summary.rebuiltStock} percent={summary.rebuiltStockPercent} idBase="rebuiltStock" onClick={onCardClick} isActive={isActive('rebuiltStock')} />
             )}
             {summary.spacial > 0 && (
                 <DashboardCard title="Call (SPACIAL)" value={summary.spacial} percent={summary.spacialPercent} idBase="spacial" gradient={true} onClick={onCardClick} isActive={isActive('spacial')} />

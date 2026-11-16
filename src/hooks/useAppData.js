@@ -261,6 +261,8 @@ export function useAppData() {
             case 'newPart': return data.filter(row => (row.StatusCall || "") === "เปิดรหัสใหม่");
             case 'exceedLeadtime': return data.filter(row => (row.StatusCall || "") === "เกินLeadtime");
             case 'nawaVipa': return data.filter(row => (row.StatusCall || "") === "เบิกศูนย์อะไหล่");
+            case 'engInTeam': return data.filter(row => (row.StatusCall || "") === "มีอะไหล่ในทีม" || (row.StatusX || "") === "มีอะไหล่ในทีม");
+            case 'rebuiltStock': return data.filter(row => (row.StatusCall || "") === "เบิกทดแทน" || (row.StatusX || "") === "เบิกทดแทน");
             case 'spacial': return data.filter(row => (row.StatusCall || "") === "SPACIAL");
             default:
                 if (filter.startsWith && filter.startsWith('calltype_')) {

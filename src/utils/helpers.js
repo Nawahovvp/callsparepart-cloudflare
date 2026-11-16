@@ -786,6 +786,8 @@ export function processRawData(
             const hasQtyPlant = r["QtyPlant"] && r["QtyPlant"] !== "" && r["QtyPlant"] !== "0";
             if (hasQtyPlant) {
                 r.TempStatusX = "ระหว่างขนส่ง";
+            } else if (r["hasMatchingEngTeam"]) {
+                r.TempStatusX = "มีอะไหล่ในทีม";
             } else if (rebuiltPlantQty > 0) {
                 r.TempStatusX = "เบิกทดแทน";
             } else {
@@ -840,7 +842,7 @@ export function processRawData(
         const rows = ticketGroups[ticket];
         let statusCall = "รอของเข้า";
 
-        const HIGH_PRIORITY_STATUSES = ["เบิกนวนคร", "เบิกวิภาวดี", "ระหว่างขนส่ง", "เบิกทดแทน"];
+        const HIGH_PRIORITY_STATUSES = ["เบิกนวนคร", "เบิกวิภาวดี", "ระหว่างขนส่ง", "เบิกทดแทน", "มีอะไหล่ในทีม"];
 
         // Define priorities and calculate StatusCall
         const rowStatuses = rows.map(r => {
@@ -881,6 +883,8 @@ export function processRawData(
             statusCall = "เบิกศูนย์อะไหล่";
         } else if (statusesToEval.includes("ระหว่างขนส่ง")) {
             statusCall = "ระหว่างขนส่ง";
+        } else if (statusesToEval.includes("มีอะไหล่ในทีม")) {
+            statusCall = "มีอะไหล่ในทีม";
         } else if (statusesToEval.includes("เบิกทดแทน")) {
             statusCall = "เบิกทดแทน";
         } else if (rowStatuses.includes("แจ้งCodeผิด")) {
@@ -1014,6 +1018,8 @@ export function processRawData(
             case "ดึงจากคลังอื่น": groupStatus = "ดึงจากคลังอื่น"; break;
             case "ระหว่างขนส่ง": groupStatus = "ระหว่างขนส่ง (ส่งสำเร็จ)"; break;
             case "เบิกศูนย์อะไหล่": groupStatus = "เบิกศูนย์อะไหล่"; break;
+            case "มีอะไหล่ในทีม": groupStatus = "มีอะไหล่ในทีม"; break;
+            case "เบิกทดแทน": groupStatus = "เบิกทดแทน"; break;
             case "SPACIAL":
             case "รอทดแทน": groupStatus = "SPACIAL"; break;
             case "ขอซื้อขอซ่อม": groupStatus = "ขอซื้อขอซ่อม"; break;
@@ -1061,6 +1067,8 @@ export function calculateSummary(processedData) {
         otherPlant: 0,
         success: 0,
         nawaVipa: 0,
+        engInTeam: 0,
+        rebuiltStock: 0,
         spacial: 0,
         request: 0,
         newPart: 0,
@@ -1098,6 +1106,8 @@ export function calculateSummary(processedData) {
         if (groupStatus === 'ดึงจากคลังอื่น') stats.otherPlant++;
         if (groupStatus === 'ระหว่างขนส่ง (ส่งสำเร็จ)') stats.success++;
         if (groupStatus === 'เบิกศูนย์อะไหล่') stats.nawaVipa++;
+        if (groupStatus === 'มีอะไหล่ในทีม' || rows.some(r => (r.StatusX || r.StatusCall) === 'มีอะไหล่ในทีม')) stats.engInTeam++;
+        if (groupStatus === 'เบิกทดแทน' || rows.some(r => (r.StatusX || r.StatusCall) === 'เบิกทดแทน')) stats.rebuiltStock++;
         if (groupStatus === 'SPACIAL') stats.spacial++;
         if (groupStatus === 'ขอซื้อขอซ่อม') stats.request++;
         if (groupStatus === 'เปิดรหัสใหม่') stats.newPart++;
@@ -1228,6 +1238,8 @@ export function calculateSummary(processedData) {
     stats.otherPlantPercent = calcPercent(stats.otherPlant);
     stats.successPercent = calcPercent(stats.success);
     stats.nawaVipaPercent = calcPercent(stats.nawaVipa);
+    stats.engInTeamPercent = calcPercent(stats.engInTeam);
+    stats.rebuiltStockPercent = calcPercent(stats.rebuiltStock);
     stats.spacialPercent = calcPercent(stats.spacial);
     stats.requestPercent = calcPercent(stats.request);
     stats.newPartPercent = calcPercent(stats.newPart);
