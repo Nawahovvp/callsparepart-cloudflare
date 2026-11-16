@@ -762,13 +762,14 @@ export function processRawData(
                         const rebRow = mainSapMap.get(rebMat);
                         r["RebuiltDescription"] = rebRow["Material description"] || rebRow["Material description old"] || rebRow["Description"] || "";
                     }
-                    if (rebMat && plantCode) {
-                        if (plantCode === "0326") {
+                    const rebuiltTargetPlant = r["IDPlant"] || plantCode;
+                    if (rebMat && rebuiltTargetPlant) {
+                        if (rebuiltTargetPlant === "0326") {
                             rebuiltPlantQty = parseFloat(vipaStock[rebMat] || 0) || 0;
-                        } else if (plantCode === "0301") {
+                        } else if (rebuiltTargetPlant === "0301") {
                             rebuiltPlantQty = parseFloat(nawaStock[rebMat] || 0) || 0;
                         } else {
-                            rebuiltPlantQty = parseFloat(plantStock[`${plantCode}_${rebMat}`] || 0) || 0;
+                            rebuiltPlantQty = parseFloat(plantStock[`${rebuiltTargetPlant}_${rebMat}`] || 0) || 0;
                         }
                     }
                 }
