@@ -164,7 +164,8 @@ function computeRequestQuantities(data) {
         if (!isValidDate(rowDate) || rowDate < threshold) return;
 
         const material = normalizeMaterial(row?.Material ?? row?.material ?? row?.MaterialCode ?? row?.Mat ?? row?.Item ?? "");
-        const plant = (row?.plant ?? row?.Plant ?? "").toString().trim();
+        let plant = (row?.plant ?? row?.Plant ?? "").toString().trim();
+        if (plant.length === 3) plant = "0" + plant;
 
         let qtyRaw = row?.qty ?? row?.Qty ?? row?.QTY ?? row?.Quantity ?? row?.quantity ?? row?.["จำนวน"] ?? row?.["จำนวนที่ขอเบิก"] ?? 0;
         let qty = 0;

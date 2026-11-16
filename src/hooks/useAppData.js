@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchAllData, fetchQuickData, sendOutsideRequest } from '../services/api';
-import { processRawData, calculateSummary, getCleanTeamPlant, normalizeMaterial, matchesDeptGroup, parseCallCreateDate } from '../utils/helpers';
+import { processRawData, calculateSummary, getCleanTeamPlant, normalizeMaterial, matchesDeptGroup, parseCallCreateDate, PLANT_MAPPING } from '../utils/helpers';
 import { loadFromCache, saveAllToCache, saveToCache } from '../services/cacheService';
 
 export function useAppData() {
@@ -70,8 +70,10 @@ export function useAppData() {
         const completeData = isPartial && fullDataRef.current
             ? {
                 ...fullDataRef.current,
-                ...fetchResult,
-                mainData: effectiveMainData
+                mainData: effectiveMainData,
+                requestData: fetchResult?.requestData ?? fullDataRef.current.requestData,
+                vipaData: fetchResult?.vipaData ?? fullDataRef.current.vipaData,
+                nawaData: fetchResult?.nawaData ?? fullDataRef.current.nawaData
             }
             : {
                 ...fetchResult,
@@ -109,10 +111,15 @@ export function useAppData() {
         return true;
     }, []);
 
-    const fetchData = useCallback(async (showLoading = true, forceFresh = false) => {
+    const fetchData = useCallback(async (showLoading = true, forceFresh = false, clearOptimistic = false) => {
         // Routine refreshes reuse active work, but a manual fresh refresh takes priority immediately
         if (inFlightFetch.current && !forceFresh) {
             return inFlightFetch.current;
+        }
+
+        if (clearOptimistic) {
+            localStorage.removeItem('app_cached_requestQuantities');
+            localStorage.removeItem('app_cached_requestByPlant');
         }
 
         if (showLoading) setIsLoading(true);
@@ -432,7 +439,7 @@ export function useAppData() {
         gmFilter, setGmFilter,
         deptGroupFilter, setDeptGroupFilter,
         applyDashboardFilter,
-        refreshData: () => fetchData(true, true),
+        refreshData: () => fetchData(true, true, true),
         refreshDataBackground: () => fetchData(false),
         updateRowLocally,
         handleOutsideRequest: async (payload) => {
