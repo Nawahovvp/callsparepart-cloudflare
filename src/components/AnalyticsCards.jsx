@@ -82,41 +82,6 @@ export default function AnalyticsCards({
                     <div className="value"><i className="fas fa-user-tie"></i></div>
                 </div>
             )}
-            {callTypeStats.filter((item) => item.value > 0).map((item, index) => {
-                const filter = `calltype_${item.label}`;
-                const typeClass = `calltype-${String(item.label).toLowerCase()}-card`;
-                return (
-                    <div
-                        key={filter}
-                        id={`callTypeCard${index}`}
-                        className={`dashboard-card group-card ${typeClass} ${dashboardFilter === filter ? 'active' : ''}`}
-                        onClick={() => onCallTypeClick?.(filter)}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', marginBottom: '2px' }}>
-                            <h3 style={{ fontSize: '0.78em', margin: 0 }}>{item.label}</h3>
-                            {dashboardFilter === filter && (
-                                <div style={{
-                                    background: '#fff',
-                                    borderRadius: '50%',
-                                    width: '16px',
-                                    height: '16px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                                }}>
-                                    <i className="fas fa-check-circle" style={{ fontSize: '14px', color: '#e74c3c' }}></i>
-                                </div>
-                            )}
-                        </div>
-                        <div className="value" style={{ fontSize: '1.05em' }}>{item.value}</div>
-                        <div className="progress-container" style={{ height: '4px', backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                            <div className="progress-bar" style={{ width: `${item.percent}%`, backgroundColor: '#fff' }}></div>
-                        </div>
-                        <div className="progress-text" style={{ color: '#fff' }}>{item.percent}%</div>
-                    </div>
-                );
-            })}
         </div>
     );
 }

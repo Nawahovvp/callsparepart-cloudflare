@@ -18,7 +18,7 @@ const STATUS_COLORS = {
     "แจ้งCodeผิด": "#e83e8c"
 };
 
-function DrawerFilterGroup({ title, icon, options, activeValue, onSelect, useStatusColors, defaultOpen = true, sectioned = false, noWaitingByKey }) {
+function DrawerFilterGroup({ title, icon, options, activeValue, onSelect, useStatusColors, defaultOpen = true, sectioned = false, noWaitingByKey, percentByKey }) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     const sorted = Object.entries(options || {}).sort((a, b) => b[1] - a[1]);
 
@@ -28,6 +28,7 @@ function DrawerFilterGroup({ title, icon, options, activeValue, onSelect, useSta
                 const isActive = activeValue === key;
                 const color = useStatusColors ? STATUS_COLORS[key] : undefined;
                 const isClear = noWaitingByKey?.[key] === true;
+                const pct = percentByKey?.[key];
                 return (
                     <button
                         key={key}
@@ -37,7 +38,7 @@ function DrawerFilterGroup({ title, icon, options, activeValue, onSelect, useSta
                         style={!isActive && color ? { borderColor: color, color } : {}}
                     >
                         <span className="drawer-chip-label">{key}</span>
-                        <span className="drawer-chip-count">{count}</span>
+                        <span className="drawer-chip-count">{pct !== undefined ? `${count} (${pct}%)` : count}</span>
                     </button>
                 );
             })}
@@ -105,9 +106,12 @@ export default function RightMenuBar({
     teamPlantFilter,
     pendingUnitFilter,
     stockAnswerFilter,
+    callTypeStats = [],
+    dashboardFilter = null,
     onTeamPlantChange,
     onPendingUnitChange,
     onStockAnswerChange,
+    onCallTypeClick,
     onClearAllFilters,
     activeFilterCount = 0,
     // Reports & Tools
@@ -222,6 +226,17 @@ export default function RightMenuBar({
                                     useStatusColors={true}
                                     defaultOpen={true}
                                 />
+                                {callTypeStats.some(item => item.value > 0) && (
+                                    <DrawerFilterGroup
+                                        title="Call Type"
+                                        icon="fas fa-tags"
+                                        options={Object.fromEntries(callTypeStats.filter(i => i.value > 0).map(i => [i.label, i.value]))}
+                                        percentByKey={Object.fromEntries(callTypeStats.filter(i => i.value > 0).map(i => [i.label, i.percent]))}
+                                        activeValue={dashboardFilter?.startsWith('calltype_') ? dashboardFilter.replace('calltype_', '') : ''}
+                                        onSelect={(val) => onCallTypeClick?.(val ? `calltype_${val}` : dashboardFilter)}
+                                        defaultOpen={true}
+                                    />
+                                )}
                             </div>
                         )}
 

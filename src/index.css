@@ -6211,3 +6211,70 @@
         gap: 6px;
     }
 }
+
+
+/* ==========================================================================
+   Framed Dashboard Card Rows
+   ========================================================================== */
+
+#dashboard.dashboard-grouped {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 20px;
+    margin-bottom: 10px;
+}
+
+.dashboard-row-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.dashboard-total-slot {
+    display: flex;
+    min-width: 130px;
+    flex: 0 0 auto;
+}
+
+.dashboard-total-slot .dashboard-card {
+    width: 100%;
+}
+
+.dashboard-group-frame {
+    flex: 1 1 520px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+    gap: 8px;
+    padding: 8px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.75);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.dashboard-extra-slot {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.dashboard-extra-slot .dashboard-card {
+    min-width: 125px;
+}
+
+@media (max-width: 900px) {
+    #dashboard.dashboard-grouped {
+        padding: 4px 12px;
+    }
+
+    .dashboard-total-slot {
+        width: 100%;
+    }
+
+    .dashboard-group-frame {
+        flex: 1 1 100%;
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

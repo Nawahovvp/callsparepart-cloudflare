@@ -74,38 +74,66 @@ export default function DashboardCards({ data = {}, onCardClick, activeCard }) {
         return activeCard === id;
     };
 
+    const hasRow1Group = summary.exceedLeadtime > 0 || summary.engInTeam > 0 || summary.rebuiltStock > 0 || summary.success > 0;
+    const hasRow2Group = summary.nawaVipa > 0 || summary.request > 0 || summary.pending > 0 || summary.otherPlant > 0;
+
     return (
-        <div id="dashboard" className="dashboard">
-            <DashboardCard title="Call ทั้งหมด" value={summary.total} percent="100%" idBase="total" onClick={onCardClick} isActive={isActive('total')} />
-            {summary.exceedLeadtime > 0 && (
-                <DashboardCard title="Call (เกิน Leadtime)" value={summary.exceedLeadtime} percent={summary.exceedLeadtimePercent} idBase="exceedLeadtime" onClick={onCardClick} isActive={isActive('exceedLeadtime')} />
-            )}
-            {summary.pending > 0 && (
-                <DashboardCard title="Call ค้าง (รอของเข้า)" value={summary.pending} percent={summary.pendingPercent} idBase="pending" onClick={onCardClick} isActive={isActive('pending')} />
-            )}
-            {summary.otherPlant > 0 && (
-                <DashboardCard title="Call (ดึงจากคลังอื่น)" value={summary.otherPlant} percent={summary.otherPlantPercent} idBase="otherPlant" onClick={onCardClick} isActive={isActive('otherPlant')} />
-            )}
-            {summary.success > 0 && (
-                <DashboardCard title="Call (ระหว่างขนส่ง)" value={summary.success} percent={summary.successPercent} idBase="success" onClick={onCardClick} isActive={isActive('success')} />
-            )}
-            {summary.nawaVipa > 0 && (
-                <DashboardCard title="Call (เบิกศูนย์อะไหล่)" value={summary.nawaVipa} percent={summary.nawaVipaPercent} idBase="nawaVipa" onClick={onCardClick} isActive={isActive('nawaVipa')} />
-            )}
-            {summary.engInTeam > 0 && (
-                <DashboardCard title="Call (มีอะไหล่ในทีม)" value={summary.engInTeam} percent={summary.engInTeamPercent} idBase="engInTeam" onClick={onCardClick} isActive={isActive('engInTeam')} />
-            )}
-            {summary.rebuiltStock > 0 && (
-                <DashboardCard title="Call (เบิกทดแทน)" value={summary.rebuiltStock} percent={summary.rebuiltStockPercent} idBase="rebuiltStock" onClick={onCardClick} isActive={isActive('rebuiltStock')} />
-            )}
-            {summary.spacial > 0 && (
-                <DashboardCard title="Call (SPACIAL)" value={summary.spacial} percent={summary.spacialPercent} idBase="spacial" gradient={true} onClick={onCardClick} isActive={isActive('spacial')} />
-            )}
-            {summary.request > 0 && (
-                <DashboardCard title="Call (ขอซื้อขอซ่อม)" value={summary.request} percent={summary.requestPercent} idBase="request" onClick={onCardClick} isActive={isActive('request')} />
-            )}
-            {summary.newPart > 0 && (
-                <DashboardCard title="Call (เปิดรหัสใหม่)" value={summary.newPart} percent={summary.newPartPercent} idBase="newPart" onClick={onCardClick} isActive={isActive('newPart')} />
+        <div id="dashboard" className="dashboard-grouped">
+            {/* บรรทัดที่ 1: Call ทั้งหมด + กรอบที่ 1 */}
+            <div className="dashboard-row-wrap">
+                <div className="dashboard-total-slot">
+                    <DashboardCard title="Call ทั้งหมด" value={summary.total} percent="100%" idBase="total" onClick={onCardClick} isActive={isActive('total')} />
+                </div>
+
+                {hasRow1Group && (
+                    <div className="dashboard-group-frame">
+                        {summary.exceedLeadtime > 0 && (
+                            <DashboardCard title="Call (เกิน Leadtime)" value={summary.exceedLeadtime} percent={summary.exceedLeadtimePercent} idBase="exceedLeadtime" onClick={onCardClick} isActive={isActive('exceedLeadtime')} />
+                        )}
+                        {summary.engInTeam > 0 && (
+                            <DashboardCard title="Call (มีอะไหล่ในทีม)" value={summary.engInTeam} percent={summary.engInTeamPercent} idBase="engInTeam" onClick={onCardClick} isActive={isActive('engInTeam')} />
+                        )}
+                        {summary.rebuiltStock > 0 && (
+                            <DashboardCard title="Call (เบิกทดแทน)" value={summary.rebuiltStock} percent={summary.rebuiltStockPercent} idBase="rebuiltStock" onClick={onCardClick} isActive={isActive('rebuiltStock')} />
+                        )}
+                        {summary.success > 0 && (
+                            <DashboardCard title="Call (ระหว่างขนส่ง)" value={summary.success} percent={summary.successPercent} idBase="success" onClick={onCardClick} isActive={isActive('success')} />
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* บรรทัดที่ 2: กรอบที่ 2 + การ์ดอื่นที่เหลือ */}
+            {(hasRow2Group || summary.spacial > 0 || summary.newPart > 0) && (
+                <div className="dashboard-row-wrap">
+                    {hasRow2Group && (
+                        <div className="dashboard-group-frame">
+                            {summary.nawaVipa > 0 && (
+                                <DashboardCard title="Call (เบิกศูนย์อะไหล่)" value={summary.nawaVipa} percent={summary.nawaVipaPercent} idBase="nawaVipa" onClick={onCardClick} isActive={isActive('nawaVipa')} />
+                            )}
+                            {summary.request > 0 && (
+                                <DashboardCard title="Call (ขอซื้อขอซ่อม)" value={summary.request} percent={summary.requestPercent} idBase="request" onClick={onCardClick} isActive={isActive('request')} />
+                            )}
+                            {summary.pending > 0 && (
+                                <DashboardCard title="Call ค้าง (รอของเข้า)" value={summary.pending} percent={summary.pendingPercent} idBase="pending" onClick={onCardClick} isActive={isActive('pending')} />
+                            )}
+                            {summary.otherPlant > 0 && (
+                                <DashboardCard title="Call (ดึงจากคลังอื่น)" value={summary.otherPlant} percent={summary.otherPlantPercent} idBase="otherPlant" onClick={onCardClick} isActive={isActive('otherPlant')} />
+                            )}
+                        </div>
+                    )}
+
+                    {(summary.spacial > 0 || summary.newPart > 0) && (
+                        <div className="dashboard-extra-slot">
+                            {summary.spacial > 0 && (
+                                <DashboardCard title="Call (SPACIAL)" value={summary.spacial} percent={summary.spacialPercent} idBase="spacial" gradient={true} onClick={onCardClick} isActive={isActive('spacial')} />
+                            )}
+                            {summary.newPart > 0 && (
+                                <DashboardCard title="Call (เปิดรหัสใหม่)" value={summary.newPart} percent={summary.newPartPercent} idBase="newPart" onClick={onCardClick} isActive={isActive('newPart')} />
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     );

@@ -701,9 +701,12 @@ function App() {
                 teamPlantFilter={teamPlantFilter}
                 pendingUnitFilter={pendingUnitFilter}
                 stockAnswerFilter={stockAnswerFilter}
+                callTypeStats={summary.callTypeStats}
+                dashboardFilter={dashboardFilter}
                 onTeamPlantChange={(v) => { setTeamPlantFilter(v); setCurrentPage(1); }}
                 onPendingUnitChange={(v) => { setPendingUnitFilter(v); setCurrentPage(1); }}
                 onStockAnswerChange={(v) => { setStockAnswerFilter(v); setCurrentPage(1); }}
+                onCallTypeClick={handleDashboardClick}
                 onClearAllFilters={() => handleDashboardClick('total')}
                 activeFilterCount={activeFilterCount}
                 onOpenGraph={() => setGraphOpen(true)}

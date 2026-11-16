@@ -23,7 +23,14 @@ export default function ControlPanel({
     if (pendingUnitFilter) activeChips.push({ key: 'pu', label: `ค้างหน่วยงาน: ${pendingUnitFilter}`, onClear: () => onPendingUnitChange('') });
     if (stockAnswerFilter) activeChips.push({ key: 'sa', label: `คลังตอบ: ${stockAnswerFilter}`, onClear: () => onStockAnswerChange('') });
     if (statusCallFilter) activeChips.push({ key: 'sc', label: `StatusCall: ${statusCallFilter}`, onClear: onClearAllFilters });
-    if (dashboardFilter) activeChips.push({ key: 'df', label: `กลุ่มสถานะ: ${dashboardFilter}`, onClear: onClearAllFilters });
+    if (dashboardFilter) {
+        const isCallType = dashboardFilter.startsWith?.('calltype_');
+        activeChips.push({
+            key: 'df',
+            label: isCallType ? `Call Type: ${dashboardFilter.replace('calltype_', '')}` : `กลุ่มสถานะ: ${dashboardFilter}`,
+            onClear: onClearAllFilters
+        });
+    }
     if (gmFilter) activeChips.push({ key: 'gm', label: `GM: ${gmFilter.replace('gm_', '')}`, onClear: onClearAllFilters });
 
     return (
