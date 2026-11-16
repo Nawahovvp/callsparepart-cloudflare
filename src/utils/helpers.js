@@ -749,6 +749,7 @@ export function processRawData(
         // Rebuilt
         r["Rebuilt"] = "";
         r["RebuiltDescription"] = "";
+        let rebuiltPlantQty = 0;
         if (mainSapMap.has(mat)) {
             let val = mainSapMap.get(mat)["Rebuilt"];
             if (val !== undefined && val !== null) {
@@ -759,6 +760,15 @@ export function processRawData(
                     if (mainSapMap.has(rebMat)) {
                         const rebRow = mainSapMap.get(rebMat);
                         r["RebuiltDescription"] = rebRow["Material description"] || rebRow["Material description old"] || rebRow["Description"] || "";
+                    }
+                    if (rebMat && plantCode) {
+                        if (plantCode === "0326") {
+                            rebuiltPlantQty = parseFloat(vipaStock[rebMat] || 0) || 0;
+                        } else if (plantCode === "0301") {
+                            rebuiltPlantQty = parseFloat(nawaStock[rebMat] || 0) || 0;
+                        } else {
+                            rebuiltPlantQty = parseFloat(plantStock[`${plantCode}_${rebMat}`] || 0) || 0;
+                        }
                     }
                 }
             }
@@ -776,6 +786,8 @@ export function processRawData(
             const hasQtyPlant = r["QtyPlant"] && r["QtyPlant"] !== "" && r["QtyPlant"] !== "0";
             if (hasQtyPlant) {
                 r.TempStatusX = "ระหว่างขนส่ง";
+            } else if (rebuiltPlantQty > 0) {
+                r.TempStatusX = "เบิกทดแทน";
             } else {
                 const hasNawa = r["Nawa"] && r["Nawa"] !== "" && r["Nawa"] !== "0";
                 if (hasNawa) {
@@ -828,7 +840,7 @@ export function processRawData(
         const rows = ticketGroups[ticket];
         let statusCall = "รอของเข้า";
 
-        const HIGH_PRIORITY_STATUSES = ["เบิกนวนคร", "เบิกวิภาวดี", "ระหว่างขนส่ง"];
+        const HIGH_PRIORITY_STATUSES = ["เบิกนวนคร", "เบิกวิภาวดี", "ระหว่างขนส่ง", "เบิกทดแทน"];
 
         // Define priorities and calculate StatusCall
         const rowStatuses = rows.map(r => {
@@ -869,6 +881,8 @@ export function processRawData(
             statusCall = "เบิกศูนย์อะไหล่";
         } else if (statusesToEval.includes("ระหว่างขนส่ง")) {
             statusCall = "ระหว่างขนส่ง";
+        } else if (statusesToEval.includes("เบิกทดแทน")) {
+            statusCall = "เบิกทดแทน";
         } else if (rowStatuses.includes("แจ้งCodeผิด")) {
             statusCall = "แจ้งCodeผิด";
         }
@@ -922,7 +936,7 @@ export function processRawData(
             r.StatusCall = statusCall; // Apply group status
 
             // INDIVIDUAL ITEM OVERRIDE: Re-evaluate leadtime specifically for THIS material
-            if (r.StatusCall === "รอของเข้า" || r.StatusCall === "เกินLeadtime") {
+            if ((r.StatusCall === "รอของเข้า" || r.StatusCall === "เกินLeadtime") && !HIGH_PRIORITY_STATUSES.includes(r.StatusX)) {
                 const nawaVal = r["Nawa"];
                 const nawaEmpty = !nawaVal || nawaVal === "-" || nawaVal === "0" || String(nawaVal).trim() === "";
 

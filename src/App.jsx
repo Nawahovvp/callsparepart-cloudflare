@@ -9,6 +9,7 @@ import AnalyticsCards from './components/AnalyticsCards';
 import GroupCards from './components/GroupCards';
 import ControlPanel from './components/ControlPanel';
 import DataTable from './components/DataTable';
+import RightMenuBar from './components/RightMenuBar';
 import { useAppData } from './hooks/useAppData';
 import { PLANT_MAPPING, exportToCSV } from './utils/helpers';
 
@@ -35,6 +36,7 @@ function App() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [scrollY, setScrollY] = useState(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [rightDrawerTab, setRightDrawerTab] = useState(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'day');
@@ -206,6 +208,35 @@ function App() {
 
   const totalPages = Math.ceil(sortedData.length / itemsPerPage) || 1;
   const paginatedData = sortedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const activeFilterCount = [
+    teamPlantFilter,
+    pendingUnitFilter,
+    stockAnswerFilter,
+    statusCallFilter,
+    dashboardFilter,
+    gmFilter
+  ].filter(Boolean).length;
+
+  const handlePrintAction = async () => {
+    if (selectedRows.length > 0) {
+      const selectedData = allData.filter(r => selectedRows.includes(r.id));
+      try {
+        const { printStickers } = await import('./utils/stickerPrint');
+        await printStickers(selectedData);
+      } catch (error) {
+        console.error('Sticker printing failed:', error);
+        alert('ไม่สามารถพิมพ์สติกเกอร์ได้');
+      }
+    } else {
+      window.print();
+    }
+  };
+
+  const handleExportCsvAction = () => {
+    const timestamp = new Date().toISOString().split('T')[0];
+    exportToCSV(sortedData, `Call_Export_${timestamp}.csv`);
+  };
 
   // Toggle all summary cards (GM & Dept Group) and show/hide full data
   const handleToggleAllCards = () => {
@@ -408,15 +439,9 @@ function App() {
       {isLoggedIn && (
         <div id="appContent" className="app-content">
           <AppHeader
-            user={currentUser}
-            onLogout={() => {
-              localStorage.removeItem('user');
-              setIsLoggedIn(false);
-              setCurrentUser(null);
-            }}
-            lastUpdated={lastUpdated} 
-            showAllCards={showAllCards}
-            onToggleAllCards={handleToggleAllCards}
+            lastUpdated={lastUpdated}
+            onRefresh={refreshData}
+            isLoading={isLoading}
             isScrolled={scrollY > 25}
           />
 
@@ -570,122 +595,148 @@ function App() {
             </div>
 
           ) : (
-            <>
-              {showAllCards && (
-                <div className="scroll-reveal-section delay-1">
-                  <GroupCards
-                    title="สรุปผลตาม GM"
-                    stats={summary.gmStats}
+            <div className="workspace-shell">
+              <div className="workspace-main">
+                {showAllCards && (
+                  <div className="scroll-reveal-section delay-1">
+                    <GroupCards
+                      title="สรุปผลตาม GM"
+                      stats={summary.gmStats}
+                      onCardClick={handleDashboardClick}
+                      activeFilter={gmFilter}
+                      prefix="gm_"
+                    />
+                  </div>
+                )}
+
+                {showAllCards && (
+                  <div className="scroll-reveal-section delay-2">
+                    <GroupCards
+                      title="สรุปผลตามกลุ่มหน่วยงาน"
+                      stats={summary.deptGroupStats}
+                      onCardClick={handleDashboardClick}
+                      activeFilter={deptGroupFilter}
+                      prefix="dept_"
+                      showZero={true}
+                    />
+                  </div>
+                )}
+
+                <div className="scroll-reveal-section delay-3">
+                  <DashboardCards
+                    data={summary}
                     onCardClick={handleDashboardClick}
-                    activeFilter={gmFilter}
-                    prefix="gm_"
+                    activeCard={dashboardFilter}
                   />
                 </div>
-              )}
 
-              {showAllCards && (
-                <div className="scroll-reveal-section delay-2">
-                  <GroupCards
-                    title="สรุปผลตามกลุ่มหน่วยงาน"
-                    stats={summary.deptGroupStats}
-                    onCardClick={handleDashboardClick}
-                    activeFilter={deptGroupFilter}
-                    prefix="dept_"
-                    showZero={true}
+                <div className="scroll-reveal-section delay-4">
+                  <AnalyticsCards
+                    data={summary}
+                    onOpenGraph={() => setGraphOpen(true)}
+                    onOpenSpareSummary={() => window.open('?page=spare-summary', '_blank')}
+                    onOver7Click={handleOver7Click}
+                    onWaitingResponseClick={handleWaitingResponseClick}
+                    onMaxCardClick={handleMaxCardClick}
+                    dashboardFilter={dashboardFilter}
+                    callTypeStats={summary.callTypeStats}
+                    onCallTypeClick={handleDashboardClick}
+                    isAdmin={currentUser?.Status === 'Admin'}
                   />
                 </div>
+
+                <div className="scroll-reveal-section delay-5">
+                  <ControlPanel
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    onSearch={() => setCurrentPage(1)}
+                    teamPlantFilter={teamPlantFilter}
+                    pendingUnitFilter={pendingUnitFilter}
+                    stockAnswerFilter={stockAnswerFilter}
+                    statusCallFilter={statusCallFilter}
+                    dashboardFilter={dashboardFilter}
+                    gmFilter={gmFilter}
+                    onTeamPlantChange={(v) => { setTeamPlantFilter(v); setCurrentPage(1); }}
+                    onPendingUnitChange={(v) => { setPendingUnitFilter(v); setCurrentPage(1); }}
+                    onStockAnswerChange={(v) => { setStockAnswerFilter(v); setCurrentPage(1); }}
+                    onClearAllFilters={() => handleDashboardClick('total')}
+                    onOpenFilters={() => setRightDrawerTab(prev => prev === 'filters' ? null : 'filters')}
+                    totalCount={sortedData.length}
+                    activeFilterCount={activeFilterCount}
+                  />
+                </div>
+
+                <div className="scroll-reveal-section delay-6">
+                  <DataTable
+                    data={paginatedData}
+                    isLoading={isLoading}
+                    currentPage={currentPage}
+                    itemsPerPage={itemsPerPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    onItemsPerPageChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}
+                    selectedRows={selectedRows}
+                    onSelectAll={(e) => setSelectedRows(e.target.checked ? paginatedData.map(r => r.id) : [])}
+                    onSelectRow={(id) => setSelectedRows(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id])}
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                    onPoClick={handlePoClick}
+                    onPrClick={handlePrClick}
+                    onOtherPlantClick={handleOtherPlantClick}
+                    onRebuiltClick={handleRebuiltClick}
+                    onStatusXClick={handleStatusXClick}
+                    onStatusGroupClick={handleStatusGroupClick}
+                    onDetailClick={handleDetailClick}
+                    onEngClick={handleEngClick}
+                    onNawaClick={handleNawaClick}
+                    onTicketClick={handleTicketClick}
+                  />
+                </div>
+              </div>
+
+              <RightMenuBar
+                activeTab={rightDrawerTab}
+                onTabChange={setRightDrawerTab}
+                availableFilters={availableFilters}
+                teamPlantFilter={teamPlantFilter}
+                pendingUnitFilter={pendingUnitFilter}
+                stockAnswerFilter={stockAnswerFilter}
+                onTeamPlantChange={(v) => { setTeamPlantFilter(v); setCurrentPage(1); }}
+                onPendingUnitChange={(v) => { setPendingUnitFilter(v); setCurrentPage(1); }}
+                onStockAnswerChange={(v) => { setStockAnswerFilter(v); setCurrentPage(1); }}
+                onClearAllFilters={() => handleDashboardClick('total')}
+                activeFilterCount={activeFilterCount}
+                onOpenGraph={() => setGraphOpen(true)}
+                onOpenSpareSummary={() => window.open('?page=spare-summary', '_blank')}
+                onOpenSummary={() => setSummaryOpen(true)}
+                onPrintTable={handlePrintAction}
+                onExportCSV={handleExportCsvAction}
+                onUpdateGuide={() => setUpdateGuideOpen(true)}
+                selectedCount={selectedRows.length}
+                user={currentUser}
+                onLogout={() => {
+                  localStorage.removeItem('user');
+                  setIsLoggedIn(false);
+                  setCurrentUser(null);
+                }}
+                showAllCards={showAllCards}
+                onToggleAllCards={handleToggleAllCards}
+              />
+
+              {selectedRows.length > 0 && (
+                <div className="floating-selection-bar">
+                  <span className="floating-selection-count">
+                    <i className="fas fa-check-square"></i> เลือกแล้ว <strong>{selectedRows.length}</strong> รายการ
+                  </span>
+                  <button type="button" className="floating-sel-btn primary" onClick={handlePrintAction}>
+                    <i className="fas fa-print"></i> พิมพ์สติกเกอร์
+                  </button>
+                  <button type="button" className="floating-sel-btn ghost" onClick={() => setSelectedRows([])}>
+                    <i className="fas fa-times"></i> ยกเลิก
+                  </button>
+                </div>
               )}
-
-              <div className="scroll-reveal-section delay-3">
-                <DashboardCards
-                  data={summary}
-                  onCardClick={handleDashboardClick}
-                  activeCard={dashboardFilter}
-                />
-              </div>
-
-              <div className="scroll-reveal-section delay-4">
-                <AnalyticsCards
-                  data={summary}
-                  onOpenGraph={() => setGraphOpen(true)}
-                  onOpenSpareSummary={() => window.open('?page=spare-summary', '_blank')}
-                  onOver7Click={handleOver7Click}
-                  onWaitingResponseClick={handleWaitingResponseClick}
-                  onMaxCardClick={handleMaxCardClick}
-                  dashboardFilter={dashboardFilter}
-                  callTypeStats={summary.callTypeStats}
-                  onCallTypeClick={handleDashboardClick}
-                  isAdmin={currentUser?.Status === 'Admin'}
-                />
-              </div>
-
-              <div className="scroll-reveal-section delay-5">
-                <ControlPanel
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  onSearch={() => setCurrentPage(1)}
-                  onPrintTable={async () => {
-                    if (selectedRows.length > 0) {
-                      const selectedData = allData.filter(r => selectedRows.includes(r.id));
-                      try {
-                        const { printStickers } = await import('./utils/stickerPrint');
-                        await printStickers(selectedData);
-                      } catch (error) {
-                        console.error('Sticker printing failed:', error);
-                        alert('ไม่สามารถพิมพ์สติกเกอร์ได้');
-                      }
-                    } else {
-                      window.print();
-                    }
-                  }}
-                  onExportCSV={() => {
-                    const timestamp = new Date().toISOString().split('T')[0];
-                    exportToCSV(sortedData, `Call_Export_${timestamp}.csv`);
-                  }}
-                  onOpenSummary={() => setSummaryOpen(true)}
-                  onUpdateGuide={() => setUpdateGuideOpen(true)}
-                  onRefresh={refreshData}
-                  isLoading={isLoading}
-                  lastUpdated={lastUpdated}
-                  availableFilters={availableFilters}
-                  teamPlantFilter={teamPlantFilter}
-                  pendingUnitFilter={pendingUnitFilter}
-                  stockAnswerFilter={stockAnswerFilter}
-                  statusCallFilter={statusCallFilter}
-                  onTeamPlantChange={(v) => { setTeamPlantFilter(v); setCurrentPage(1); }}
-                  onPendingUnitChange={(v) => { setPendingUnitFilter(v); setCurrentPage(1); }}
-                  onStockAnswerChange={(v) => { setStockAnswerFilter(v); setCurrentPage(1); }}
-                  onStatusCallChange={(v) => { setStatusCallFilter(v); setCurrentPage(1); }}
-                />
-              </div>
-
-              <div className="scroll-reveal-section delay-6">
-                <DataTable
-                  data={paginatedData}
-                  isLoading={isLoading}
-                  currentPage={currentPage}
-                  itemsPerPage={itemsPerPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                  onItemsPerPageChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}
-                  selectedRows={selectedRows}
-                  onSelectAll={(e) => setSelectedRows(e.target.checked ? paginatedData.map(r => r.id) : [])}
-                  onSelectRow={(id) => setSelectedRows(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id])}
-                  sortConfig={sortConfig}
-                  onSort={handleSort}
-                  onPoClick={handlePoClick}
-                  onPrClick={handlePrClick}
-                  onOtherPlantClick={handleOtherPlantClick}
-                  onRebuiltClick={handleRebuiltClick}
-                  onStatusXClick={handleStatusXClick}
-                  onStatusGroupClick={handleStatusGroupClick}
-                  onDetailClick={handleDetailClick}
-                  onEngClick={handleEngClick}
-                  onNawaClick={handleNawaClick}
-                  onTicketClick={handleTicketClick}
-                />
-              </div>
-            </>
+            </div>
           )}
 
           <Suspense fallback={null}>

@@ -276,6 +276,7 @@ function getStatusColor(status) {
         "รอของเข้า": "var(--danger-color)", "เกินLeadtime": "#8b0000", "ดึงจากคลังอื่น": "#3f51b5",
         "เปิดรหัสใหม่": "#6f42c1", "สำเร็จ": "var(--success-color)", "ระหว่างขนส่ง": "var(--success-color)",
         "เบิกนวนคร": "var(--info-color)", "เบิกศูนย์อะไหล่": "var(--info-color)", "เบิกวิภาวดี": "#fd7e14",
+        "เบิกทดแทน": "#0891b2",
         "ขอซื้อขอซ่อม": "#20c997", "SPACIAL": "#6c757d", "รอทดแทน": "#ffc107", "แจ้งCodeผิด": "var(--danger-color)"
     };
     return c[status] || "#6c757d";

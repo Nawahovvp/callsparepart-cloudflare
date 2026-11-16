@@ -1,11 +1,16 @@
 import React, { useMemo } from 'react';
+import { matchesDeptGroup } from '../utils/helpers';
 
 export default function GMSummaryPage({ data = [], onClose }) {
+    const stockData = useMemo(() => {
+        return (data || []).filter(row => matchesDeptGroup(row["ค้างหน่วยงาน"], 'Stock'));
+    }, [data]);
+
     const gmPerformance = useMemo(() => {
-        if (!data || data.length === 0) return [];
+        if (!stockData || stockData.length === 0) return [];
 
         const gmGroups = {};
-        data.forEach(row => {
+        stockData.forEach(row => {
             const ticket = row["Ticket Number"];
             if (!ticket || String(ticket).trim() === "" || String(ticket).trim() === "-") return;
 
@@ -68,7 +73,7 @@ export default function GMSummaryPage({ data = [], onClose }) {
             if (a.name !== b.name) return a.name.localeCompare(b.name);
             return a.designation === "SA" ? -1 : 1;
         });
-    }, [data]);
+    }, [stockData]);
 
     // Overall Executive KPIs
     const totalTickets = gmPerformance.reduce((sum, g) => sum + g.total, 0);
@@ -79,13 +84,13 @@ export default function GMSummaryPage({ data = [], onClose }) {
 
     const allStatuses = useMemo(() => {
         const statuses = new Set();
-        data.forEach(row => {
+        stockData.forEach(row => {
             const ticket = row["Ticket Number"];
             if (!ticket || String(ticket).trim() === "" || String(ticket).trim() === "-") return;
             if (row.StatusCall) statuses.add(row.StatusCall);
         });
         return [...statuses].sort();
-    }, [data]);
+    }, [stockData]);
 
     return (
         <div className="spare-page-container" style={{ padding: '30px', backgroundColor: 'var(--bg-color)', minHeight: '100vh', overflowY: 'auto' }}>
@@ -94,7 +99,7 @@ export default function GMSummaryPage({ data = [], onClose }) {
                     <h2 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '5px' }}>
                         แดชบอร์ดสรุปผลผู้บริหาร (GM)
                     </h2>
-                    <p style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>สรุปผลการดำเนินงานและสถานะงานค้างรายบุคคล</p>
+                    <p style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>สรุปผลการดำเนินงานและสถานะงานค้างรายบุคคล (เฉพาะค้างหน่วยงาน Stock)</p>
                 </div>
                 <button onClick={onClose} className="action-button logout-button" style={{ padding: '12px 25px' }}>
                     <i className="fas fa-times"></i> ปิด Dashboard
