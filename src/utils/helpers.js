@@ -452,6 +452,14 @@ function parseReplyDate(value) {
         : null;
 }
 
+function sanitizeCallQuantity(val) {
+    if (val === undefined || val === null) return "1";
+    const str = String(val).replace(/,/g, '').trim();
+    if (!str || str === "-") return "1";
+    if (/^\d{2}\.\d{2}$/.test(str) || /^\d{8}$/.test(str)) return "1";
+    return str;
+}
+
 export function processRawData(
     mainData,
     requestData,
@@ -508,8 +516,8 @@ export function processRawData(
                 "คลังตอบ": row["คลังตอบ"] || "",
                 UserAns: row["ผู้ตอบ"] || row.UserAns,
                 TimeLine: details,
-                "จำนวน": callMaterialQuantity ?? detailQuantity ?? "1",
-                _callMaterialQuantity: callMaterialQuantity ?? "",
+                "จำนวน": sanitizeCallQuantity(callMaterialQuantity ?? detailQuantity ?? "1"),
+                _callMaterialQuantity: callMaterialQuantity ? sanitizeCallQuantity(callMaterialQuantity) : "",
                 PendingStockDays: pendingStockDays,
                 Description: description || (isCallMaterialRow ? "" : row.Description || row.Discription || row.Desc || "")
             };
@@ -520,10 +528,7 @@ export function processRawData(
             const labeledCode = details.match(/Material\s*Code\s*:\s*(\d+)/i)?.[1];
             const quantitiesByMaterial = new Map(
                 [...details.matchAll(/(?:^|\D)(300\d{5})[^\S\r\n]+([\d,]+(?:\.\d+)?)[^\S\r\n]*(?:PCS?|EA)?/gi)]
-                    .map(match => {
-                        const quantity = match[2].replace(/,/g, '');
-                        return [match[1], /^\d{2}\.\d{2}$/.test(quantity) ? "1" : quantity];
-                    })
+                    .map(match => [match[1], sanitizeCallQuantity(match[2])])
             );
             let materials = [];
 
@@ -546,9 +551,11 @@ export function processRawData(
                 ...row,
                 Material,
                 Description: labeledCode?.length === 16 || detailMaterials.length ? "" : row.Description,
-                "จำนวน": row._callMaterialQuantity !== ""
-                    ? row._callMaterialQuantity
-                    : quantitiesByMaterial.get(Material) ?? row["จำนวน"] ?? "1"
+                "จำนวน": sanitizeCallQuantity(
+                    row._callMaterialQuantity !== ""
+                        ? row._callMaterialQuantity
+                        : quantitiesByMaterial.get(Material) ?? row["จำนวน"] ?? "1"
+                )
             }));
         })
         : mainData;
