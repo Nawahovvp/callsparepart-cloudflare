@@ -208,6 +208,10 @@ function App() {
 
   const totalPages = Math.ceil(sortedData.length / itemsPerPage) || 1;
   const paginatedData = sortedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalQuantity = React.useMemo(
+    () => sortedData.reduce((sum, r) => sum + (parseFloat(String(r['จำนวน'] || '0').replace(/,/g, '')) || 0), 0),
+    [sortedData]
+  );
 
   const activeFilterCount = [
     teamPlantFilter,
@@ -681,6 +685,7 @@ function App() {
                     onClearAllFilters={() => handleDashboardClick('total')}
                     onOpenFilters={() => setRightDrawerTab(prev => prev === 'filters' ? null : 'filters')}
                     totalCount={sortedData.length}
+                    totalQuantity={totalQuantity}
                     activeFilterCount={activeFilterCount}
                   />
                 </div>

@@ -6629,3 +6629,13 @@
         cursor: pointer;
     }
 }
+
+.result-count-pill.qty-pill {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.result-count-pill.qty-pill strong {
+    color: #1e40af;
+}

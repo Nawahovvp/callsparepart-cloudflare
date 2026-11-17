@@ -16,6 +16,7 @@ export default function ControlPanel({
     onClearAllFilters,
     onOpenFilters,
     totalCount = 0,
+    totalQuantity = 0,
     activeFilterCount = 0
 }) {
     const activeChips = [];
@@ -75,6 +76,9 @@ export default function ControlPanel({
 
                 <span className="result-count-pill">
                     พบ <strong>{totalCount.toLocaleString()}</strong> รายการ
+                </span>
+                <span className="result-count-pill qty-pill">
+                    รวมจำนวน <strong>{totalQuantity.toLocaleString()}</strong> ชิ้น
                 </span>
             </div>
 
