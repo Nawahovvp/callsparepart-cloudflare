@@ -344,7 +344,7 @@ export function SummaryModal({ isOpen, onClose, data = [] }) {
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
                                 overflow: 'hidden'
                             }}>
-                                <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
+                                <div className="desktop-table-wrap" style={{ maxHeight: '60vh', overflow: 'auto' }}>
                                     <table className="summary-pivot-table" style={{
                                         width: '100%',
                                         borderCollapse: 'separate',
@@ -422,6 +422,32 @@ export function SummaryModal({ isOpen, onClose, data = [] }) {
                                             </tr>
                                         </tbody>
                                     </table>
+                                </div>
+
+                                <div className="mobile-deck-list modal-deck-list" style={{ padding: '6px' }}>
+                                    {summaryData.sorted.map(({ tp, total }) => (
+                                        <div key={tp} className="mobile-deck-card">
+                                            <div className="deck-top">
+                                                <span className="deck-mat">{tp}</span>
+                                                <span className="deck-pill blue">รวม: {total}</span>
+                                            </div>
+                                            <div className="deck-pills">
+                                                {summaryData.statusCalls.map(status => {
+                                                    const val = summaryData.pivotData[tp]?.[status] || 0;
+                                                    if (!val) return null;
+                                                    return (
+                                                        <span
+                                                            key={status}
+                                                            className="deck-pill"
+                                                            style={{ backgroundColor: CHART_COLORS[status] || '#64748b' }}
+                                                        >
+                                                            {status}: {val}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -754,7 +780,7 @@ export function SpareSummaryModal({ isOpen, onClose, data = [], rawSources = {},
                 </div>
 
                 {/* Table */}
-                <div id="spareSummaryTableArea" style={{ margin: '10px', overflow: 'auto', maxHeight: '60vh' }}>
+                <div id="spareSummaryTableArea" className="desktop-table-wrap" style={{ margin: '10px', overflow: 'auto', maxHeight: '60vh' }}>
                     <table className="detail-table" style={{ fontSize: '12px', width: '100%' }}>
                         <thead>
                             <tr>
@@ -814,6 +840,45 @@ export function SpareSummaryModal({ isOpen, onClose, data = [], rawSources = {},
                             })}
                         </tbody>
                     </table>
+                </div>
+
+                <div className="mobile-deck-list modal-deck-list" style={{ margin: '6px', maxHeight: '60vh', overflowY: 'auto' }}>
+                    {displayRows.length === 0 ? (
+                        <div className="mobile-deck-empty">ไม่มีข้อมูล</div>
+                    ) : displayRows.map(matDesc => {
+                        const [material, description] = matDesc.split('|');
+                        const d = pivotData[matDesc];
+                        const materialPrg = prgMap[material] || '-';
+                        const matNorm = normalizeMaterial(material);
+                        const prVal = prMap[matNorm] || 0;
+                        const poVal = poMap[material] || 0;
+                        const detail = poDetailMap[material] || {};
+                        const nawaVal = nawaMap[material] || 0;
+
+                        return (
+                            <div key={matDesc} className="mobile-deck-card">
+                                <div className="deck-top">
+                                    <div className="deck-top-left">
+                                        <span className="deck-mat">{material}</span>
+                                        {materialPrg !== '-' && <span className="deck-type">{materialPrg}</span>}
+                                    </div>
+                                    <span className="deck-pill dark-red">รวม: {d.total}</span>
+                                </div>
+                                <div className="deck-mid">
+                                    <span className="deck-desc" title={description}>{description}</span>
+                                </div>
+                                <div className="deck-pills">
+                                    {prVal > 0 && <span className="deck-pill pink">PR:{prVal}</span>}
+                                    {poVal > 0 && <span className="deck-pill blue">PO:{poVal}</span>}
+                                    {nawaVal > 0 && <span className="deck-pill green">นว:{nawaVal}</span>}
+                                    {detail.delivDate && detail.delivDate !== '-' && <span className="deck-pill orange">ส่ง:{detail.delivDate}</span>}
+                                    {pendingUnits.map(u => d[u] > 0 ? (
+                                        <span key={u} className="deck-ans-user">{u}:{d[u]}</span>
+                                    ) : null)}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         </div>

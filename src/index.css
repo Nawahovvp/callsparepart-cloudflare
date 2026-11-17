@@ -5406,7 +5406,7 @@
 .workspace-main {
     flex: 1 1 auto;
     min-width: 0;
-    padding-right: 68px;
+    padding-right: 0;
     transition: padding-right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -6096,16 +6096,58 @@
     background: rgba(255, 255, 255, 0.22);
 }
 
-/* Adjust Back-to-top button to sit cleanly left of the Right Rail */
+/* Header Icon Groups & Dividers */
+.header-icon-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.header-divider {
+    width: 1px;
+    height: 22px;
+    background: #cbd5e1;
+    margin: 0 4px;
+}
+
+.header-icon-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 99px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 9.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.header-refresh-btn.active {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+}
+
+/* Back-to-top button sits cleanly at bottom-right */
 .floating-back-to-top {
-    right: 78px !important;
+    right: 24px !important;
 }
 
 /* Responsive Mobile Dock */
 @media (max-width: 900px) {
     .workspace-main {
         padding-right: 0;
-        padding-bottom: 72px;
+        padding-bottom: 16px;
+    }
+
+    .header-divider {
+        display: none;
     }
 
     .right-dock {
@@ -6243,10 +6285,18 @@
     display: flex;
     min-width: 130px;
     flex: 0 0 auto;
+    margin-left: 0;
 }
 
 .dashboard-total-slot .dashboard-card {
     width: 100%;
+    box-sizing: border-box;
+}
+
+#dashboard .dashboard-card.active,
+#analyticsDashboard .dashboard-card.active {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 0 0 2px #1d4ed8, 0 6px 14px rgba(37, 99, 235, 0.28) !important;
 }
 
 .dashboard-group-frame {
@@ -6283,5 +6333,299 @@
     .dashboard-group-frame {
         flex: 1 1 100%;
         grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+
+/* ==========================================================================
+   Mobile Ultra-Compact Deck View
+   ========================================================================== */
+
+.mobile-deck-list {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .desktop-table-wrap {
+        display: none !important;
+    }
+
+    .mobile-deck-list {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        padding: 0 8px 8px;
+    }
+
+    .mobile-deck-empty {
+        text-align: center;
+        padding: 20px 10px;
+        font-size: 12px;
+        color: #64748b;
+        background: #ffffff;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .mobile-deck-card {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        font-size: 10.5px;
+        line-height: 1.25;
+    }
+
+    .mobile-deck-card.row-group-even {
+        background: var(--row-even-bg, #ffffff);
+    }
+
+    .mobile-deck-card.row-group-odd {
+        background: var(--row-odd-bg, #f8fafc);
+    }
+
+    .deck-top,
+    .deck-mid,
+    .deck-meta,
+    .deck-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 5px;
+        min-width: 0;
+    }
+
+    .deck-top-left {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .deck-checkbox {
+        width: 13px;
+        height: 13px;
+        margin: 0;
+        flex-shrink: 0;
+    }
+
+    .deck-ticket {
+        font-weight: 700;
+        color: #0d6efd;
+        text-decoration: underline;
+        font-size: 10.5px;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+    .deck-type {
+        background: #e2e8f0;
+        color: #334155;
+        font-weight: 700;
+        font-size: 9px;
+        padding: 0 4px;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
+
+    .deck-brand {
+        color: #475569;
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+    }
+
+    .deck-days {
+        font-size: 9.5px;
+        font-weight: 700;
+        color: #64748b;
+        flex-shrink: 0;
+    }
+
+    .deck-status-badge {
+        font-size: 9.5px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 99px;
+        border: 1px solid currentColor;
+        background: rgba(255, 255, 255, 0.85);
+        white-space: nowrap;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+    .deck-mid {
+        justify-content: flex-start;
+    }
+
+    .deck-mat {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 10.5px;
+        flex-shrink: 0;
+    }
+
+    .deck-desc {
+        color: #475569;
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .deck-mat.strike,
+    .deck-desc.strike {
+        text-decoration: line-through;
+        color: var(--danger-color);
+    }
+
+    .deck-meta {
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 4px;
+    }
+
+    .deck-unit {
+        font-size: 9.5px;
+        color: #475569;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    .deck-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+    }
+
+    .deck-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0 5px;
+        height: 15px;
+        border-radius: 99px;
+        font-size: 9px;
+        font-weight: 700;
+        color: #ffffff;
+        background: #64748b;
+        white-space: nowrap;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+    .deck-pill.dark-red { background: #8b0000; cursor: default; }
+    .deck-pill.pink { background: #e83e8c; }
+    .deck-pill.blue { background: #0d6efd; }
+    .deck-pill.green { background: #16a34a; }
+    .deck-pill.orange { background: #fd7e14; cursor: default; }
+    .deck-pill.teal { background: #0d9488; cursor: default; }
+    .deck-pill.cyan { background: #0891b2; }
+    .deck-pill.purple { background: #6f42c1; cursor: default; }
+    .deck-pill.magenta { background: #e91e63; }
+
+    .deck-foot {
+        padding-top: 2px;
+        border-top: 1px dashed #e2e8f0;
+    }
+
+    .deck-answer {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .deck-ans-text {
+        font-size: 9.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .deck-ans-date {
+        font-size: 9px;
+        color: #94a3b8;
+        flex-shrink: 0;
+    }
+
+    .deck-ans-user {
+        font-size: 9px;
+        color: #475569;
+        background: #f1f5f9;
+        padding: 0 4px;
+        border-radius: 4px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .deck-detail-btn {
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 9.5px;
+        font-weight: 600;
+        padding: 1px 7px;
+        border-radius: 6px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .deck-detail-btn:active {
+        background: #e2e8f0;
+    }
+}
+
+@media (max-width: 768px) {
+    .deck-item-count {
+        background: #2563eb;
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 0 5px;
+        border-radius: 99px;
+        flex-shrink: 0;
+    }
+
+    .deck-unit-row {
+        display: flex;
+        align-items: center;
+        padding-bottom: 2px;
+    }
+
+    .deck-items-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .deck-subitem {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding-top: 4px;
+        border-top: 1px dashed #cbd5e1;
+    }
+
+    .deck-item-status {
+        font-size: 9.5px;
+        font-weight: 700;
+        text-decoration: underline;
+        white-space: nowrap;
+        flex-shrink: 0;
+        cursor: pointer;
     }
 }

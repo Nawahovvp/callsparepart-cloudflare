@@ -46,7 +46,7 @@ function mergeCachedSources(data, cachedData, fresh = false, latestQuickData = n
     const result = { ...data };
     const failedSources = new Set(data.failedSources || []);
     const sourceKeys = [
-        'mainData', 'requestData', 'poData', 'prData', 'mainSapData',
+        'mainData', 'dateUpdateData', 'requestData', 'poData', 'prData', 'mainSapData',
         'vipaData', 'nawaData', 'plantStockData', 'newPartData',
         'projectData', 'teamPlantData'
     ];

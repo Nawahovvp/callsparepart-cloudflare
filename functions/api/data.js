@@ -15,11 +15,12 @@ const SOURCES = [
     ...Array.from({ length: 5 }, (_, index) => [
         `engData${index + 1}`,
         `https://opensheet.elk.sh/1yPYR-Lyg7RUj8chHgY9NQ_D5arubvf4kW-YJvJiEOOg/Sheet${index + 1}`
-    ])
+    ]),
+    ['dateUpdateData', 'https://opensheet.elk.sh/112KOJI227dvyHy4w_gD8wuANrVPmFK_ezzZyV_uWVrE/Dateupdate']
 ];
 
 const NAWA_BACKUP_URL = 'https://script.google.com/macros/s/AKfycbywtsN35exs0olcwpwrzIbfm93QyAai2ZfHgWbjeB88d-3XIPWy1e4j3hJqzy5i6loo4g/exec';
-export const QUICK_SOURCE_KEYS = ['mainData', 'requestData', 'vipaData', 'nawaData'];
+export const QUICK_SOURCE_KEYS = ['mainData', 'dateUpdateData', 'requestData', 'vipaData', 'nawaData'];
 const MATERIAL_SOURCE_KEYS = new Set([
     'requestData', 'poData', 'prData', 'mainSapData',
     'vipaData', 'nawaData', 'plantStockData',
@@ -224,6 +225,7 @@ async function fetchAllSources(nawaBackupUrl, fresh = false) {
 
     const responseData = {
         mainData,
+        dateUpdateData: results.get('dateUpdateData'),
         requestData: results.get('requestData'),
         poData: results.get('poData'),
         prData: results.get('prData'),

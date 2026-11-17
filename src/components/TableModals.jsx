@@ -87,7 +87,8 @@ export function PoDetailsModal({ isOpen, onClose, material, description, poRawDa
                             ไม่พบรายละเอียด PO
                         </div>
                     ) : (
-                        <div className="compact-table-wrapper">
+                        <>
+                            <div className="compact-table-wrapper desktop-table-wrap">
                             <table className="compact-table">
                                 <thead>
                                     <tr>
@@ -161,6 +162,54 @@ export function PoDetailsModal({ isOpen, onClose, material, description, poRawDa
                                 </tbody>
                             </table>
                         </div>
+
+                        <div className="mobile-deck-list modal-deck-list">
+                            {details.map((row, i) => {
+                                const dateStr = row["Document Date"] || row["Date"] || row["Delivery Date"] || row["Deliv.Date"] || "-";
+                                const doc = row["Purchasing Document"] || row["Purch.Doc."] || "-";
+                                const supplier = row["Supplier/Supplying Plant"] || "-";
+                                const qty = row["Still to be delivered (qty)"] || "-";
+                                let calculatedDelivDateStr = dateStr;
+                                let isOverdue = false;
+                                if (dateStr !== "-") {
+                                    let d = parseDateString(dateStr);
+                                    if (!d) {
+                                        const parts = dateStr.split('/').map(Number);
+                                        if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+                                            const fullYear = parts[2] < 100 ? 2000 + parts[2] : parts[2];
+                                            d = new Date(fullYear, parts[1] - 1, parts[0]);
+                                        }
+                                    }
+                                    if (d && !isNaN(d.getTime())) {
+                                        d.setHours(0, 0, 0, 0);
+                                        const day = String(d.getDate()).padStart(2, '0');
+                                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                                        calculatedDelivDateStr = `${day}/${month}/${d.getFullYear()}`;
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        if (d < today) isOverdue = true;
+                                    }
+                                }
+                                return (
+                                    <div key={i} className="mobile-deck-card">
+                                        <div className="deck-top">
+                                            <span className="deck-mat" style={{ color: '#007bff' }}>{doc}</span>
+                                            <div className="deck-pills">
+                                                <span className="deck-pill green">จำนวน: {qty}</span>
+                                                {leadtime !== '-' && <span className="deck-pill dark-red">LT: {leadtime}</span>}
+                                            </div>
+                                        </div>
+                                        <div className="deck-foot" style={{ borderTop: 'none', paddingTop: 0 }}>
+                                            <span className="deck-desc">{supplier}</span>
+                                            <span className="deck-ans-date" style={isOverdue ? { color: '#856404', background: '#fff3cd', padding: '0 4px', borderRadius: 4, fontWeight: 700 } : undefined}>
+                                                ส่ง: {calculatedDelivDateStr}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        </>
                     )}
                 </div>
             </div>
@@ -209,7 +258,8 @@ export function PrDetailsModal({ isOpen, onClose, material, description, prRawDa
                             ไม่พบรายละเอียด PR
                         </div>
                     ) : (
-                        <div className="compact-table-wrapper">
+                        <>
+                            <div className="compact-table-wrapper desktop-table-wrap">
                             <table className="compact-table">
                                 <thead>
                                     <tr>
@@ -236,6 +286,28 @@ export function PrDetailsModal({ isOpen, onClose, material, description, prRawDa
                                 </tbody>
                             </table>
                         </div>
+
+                        <div className="mobile-deck-list modal-deck-list">
+                            {details.map((row, i) => {
+                                const date = row["Requisition date"] || "-";
+                                const doc = row["Purchase Requisition"] || "-";
+                                const req = parseFloat((row["Quantity requested"] || "0").toString().replace(/,/g, '')) || 0;
+                                const ord = parseFloat((row["Quantity ordered"] || "0").toString().replace(/,/g, '')) || 0;
+                                const qty = req - ord;
+                                return (
+                                    <div key={i} className="mobile-deck-card">
+                                        <div className="deck-top">
+                                            <span className="deck-mat" style={{ fontFamily: 'monospace', color: '#17a2b8' }}>{doc}</span>
+                                            <span className="deck-pill green">จำนวน: {qty}</span>
+                                        </div>
+                                        <div className="deck-foot" style={{ borderTop: 'none', paddingTop: 0 }}>
+                                            <span className="deck-ans-date">วันที่ขอ: {date}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        </>
                     )}
                 </div>
             </div>
@@ -310,7 +382,8 @@ export function EngDetailsModal({ isOpen, onClose, row, engData }) {
                             ไม่พบรายละเอียดข้อมูลช่างสำหรับศูนย์นี้
                         </div>
                     ) : (
-                        <div className="compact-table-wrapper">
+                        <>
+                            <div className="compact-table-wrapper desktop-table-wrap">
                             <table className="compact-table">
                                 <thead>
                                     <tr>
@@ -342,6 +415,32 @@ export function EngDetailsModal({ isOpen, onClose, row, engData }) {
                                 </tbody>
                             </table>
                         </div>
+
+                        <div className="mobile-deck-list modal-deck-list">
+                            {details.map((item, i) => {
+                                const isMatchTeam = item["หน่วยงาน"] && row["Team"] && item["หน่วยงาน"].toString().trim() === row["Team"].toString().trim();
+                                return (
+                                    <div key={i} className="mobile-deck-card">
+                                        <div className="deck-top">
+                                            <div className="deck-top-left">
+                                                <span className="deck-mat" style={{ fontFamily: 'monospace' }}>{item["Employee ID"] || item["ID"] || "-"}</span>
+                                                <span className="deck-brand">{item["ชื่อ"] || item["Name"] || "-"}</span>
+                                            </div>
+                                            <span className="deck-pill cyan">จำนวน: {(item["จำนวน"] || item["Qty"] || "0").toLocaleString()}</span>
+                                        </div>
+                                        <div className="deck-foot" style={{ borderTop: 'none', paddingTop: 0 }}>
+                                            <span className="deck-unit">หน่วยงาน:</span>
+                                            {isMatchTeam ? (
+                                                <span className="deck-pill orange">{item["หน่วยงาน"]}</span>
+                                            ) : (
+                                                <span className="deck-ans-user">{item["หน่วยงาน"] || "-"}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        </>
                     )}
                 </div>
             </div>

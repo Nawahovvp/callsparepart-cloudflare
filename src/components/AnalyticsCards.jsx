@@ -10,7 +10,8 @@ export default function AnalyticsCards({
     dashboardFilter,
     callTypeStats = [],
     onCallTypeClick,
-    isAdmin = false
+    isAdmin = false,
+    showAllCards = false
 }) {
     const summary = {
         over7: data.over7 || 0,
@@ -76,7 +77,7 @@ export default function AnalyticsCards({
                 <div className="value"><i className="fas fa-list-alt"></i></div>
             </div>
 
-            {isAdmin && (
+            {isAdmin && showAllCards && (
                 <div id="gmSummaryCard" className="dashboard-card gm-summary-card" style={{ cursor: 'pointer' }} onClick={() => onMaxCardClick?.('gmSummary')}>
                     <h3><i className="fas fa-chart-pie"></i> สรุป GM (Executive)</h3>
                     <div className="value"><i className="fas fa-user-tie"></i></div>

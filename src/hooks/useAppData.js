@@ -35,17 +35,32 @@ export function useAppData() {
     // Process fetched data (shared between cache load and server load)
     const applyData = useCallback((fetchResult, saveCache = false, isPartial = false) => {
         let candidateMainData = fetchResult?.mainData;
+        let candidateDateUpdate = fetchResult?.dateUpdateData;
 
-        // Find latest update date in incoming mainData
-        const incomingLatestUpdate = Array.isArray(candidateMainData)
-            ? candidateMainData.reduce((latest, row) => {
+        // Primary: Read Data Update from Dateupdate sheet cell A2 (row 0)
+        let incomingLatestUpdate = null;
+        if (Array.isArray(candidateDateUpdate) && candidateDateUpdate.length > 0) {
+            const firstRow = candidateDateUpdate[0];
+            const rawValue = firstRow?.['วันที่อัปเดต'] ?? (firstRow && typeof firstRow === 'object' ? Object.values(firstRow)[0] : null);
+            if (rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '') {
+                const valueStr = String(rawValue).trim();
+                incomingLatestUpdate = {
+                    date: parseCallCreateDate(valueStr),
+                    value: valueStr
+                };
+            }
+        }
+
+        // Fallback: Find latest update date in incoming mainData if Dateupdate sheet is empty
+        if (!incomingLatestUpdate && Array.isArray(candidateMainData)) {
+            incomingLatestUpdate = candidateMainData.reduce((latest, row) => {
                 const value = row?.['วันที่อัปเดต'];
                 const date = parseCallCreateDate(value);
                 return date && (!latest || date > latest.date)
                     ? { date, value: String(value).trim() }
                     : latest;
-            }, null)
-            : null;
+            }, null);
+        }
 
         // Guard against older data reverting a newer update (e.g. from stale cache or edge cache)
         let effectiveMainData = candidateMainData;
@@ -71,6 +86,7 @@ export function useAppData() {
             ? {
                 ...fullDataRef.current,
                 mainData: effectiveMainData,
+                dateUpdateData: fetchResult?.dateUpdateData ?? fullDataRef.current.dateUpdateData,
                 requestData: fetchResult?.requestData ?? fullDataRef.current.requestData,
                 vipaData: fetchResult?.vipaData ?? fullDataRef.current.vipaData,
                 nawaData: fetchResult?.nawaData ?? fullDataRef.current.nawaData
@@ -81,7 +97,7 @@ export function useAppData() {
             };
 
         const {
-            mainData, requestData, poData, prData, mainSapData,
+            mainData, dateUpdateData, requestData, poData, prData, mainSapData,
             vipaData, nawaData, plantStockData, newPartData,
             projectData, teamPlantData, engData
         } = completeData;
@@ -102,7 +118,7 @@ export function useAppData() {
         // Save ALL sources to cache for instant load next time
         if (saveCache) {
             saveAllToCache({
-                mainData, requestData, poData, prData, mainSapData, 
+                mainData, dateUpdateData, requestData, poData, prData, mainSapData, 
                 vipaData, nawaData, plantStockData, newPartData, 
                 projectData, teamPlantData, engData
             });
@@ -138,11 +154,13 @@ export function useAppData() {
                         // Save quickData and individual caches immediately so fresh data is persisted
                         void saveToCache('quickData', {
                             mainData: quickResult.mainData,
+                            dateUpdateData: quickResult.dateUpdateData,
                             requestData: quickResult.requestData,
                             vipaData: quickResult.vipaData,
                             nawaData: quickResult.nawaData
                         });
                         void saveToCache('mainData', quickResult.mainData);
+                        if (quickResult.dateUpdateData?.length) void saveToCache('dateUpdateData', quickResult.dateUpdateData);
                         if (quickResult.requestData?.length) void saveToCache('requestData', quickResult.requestData);
                         if (quickResult.vipaData?.length) void saveToCache('vipaData', quickResult.vipaData);
                         if (quickResult.nawaData?.length) void saveToCache('nawaData', quickResult.nawaData);

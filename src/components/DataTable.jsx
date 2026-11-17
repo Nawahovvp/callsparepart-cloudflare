@@ -43,9 +43,25 @@ export default function DataTable({
 }) {
     const dataWithGroup = React.useMemo(() => addTicketGroupClasses(data), [data]);
 
+    const mobileDeckGroups = React.useMemo(() => {
+        const groups = [];
+        const map = new Map();
+        dataWithGroup.forEach((row, idx) => {
+            const ticketKey = String(row['Ticket Number'] || `__row_${idx}`);
+            let group = map.get(ticketKey);
+            if (!group) {
+                group = { ticket: row['Ticket Number'], head: row, items: [] };
+                map.set(ticketKey, group);
+                groups.push(group);
+            }
+            group.items.push(row);
+        });
+        return groups;
+    }, [dataWithGroup]);
+
     return (
         <>
-            <div className="table-container">
+            <div className="table-container desktop-table-wrap">
                 <table id="data-table" className="compact">
                     <thead>
                         <tr>
@@ -237,6 +253,152 @@ export default function DataTable({
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile Ultra-Compact Deck View (Grouped by Ticket Number) */}
+            <div className="mobile-deck-list">
+                {isLoading && mobileDeckGroups.length === 0 ? (
+                    <div className="mobile-deck-empty">กำลังโหลดข้อมูล...</div>
+                ) : mobileDeckGroups.length === 0 ? (
+                    <div className="mobile-deck-empty">ไม่พบข้อมูล</div>
+                ) : (
+                    mobileDeckGroups.map((group, gIdx) => {
+                        const head = group.head;
+                        const dayRepair = !isNaN(parseFloat(head['DayRepair'])) ? Math.floor(parseFloat(head['DayRepair'])) : '-';
+                        const teamPlantCleaned = cleanTeamPlant(head['TeamPlant']);
+                        const allSelected = group.items.every(r => selectedRows?.includes(r.id));
+                        const toggleGroupSelect = () => {
+                            group.items.forEach(r => {
+                                const isSel = selectedRows?.includes(r.id);
+                                if (allSelected && isSel) onSelectRow(r.id);
+                                else if (!allSelected && !isSel) onSelectRow(r.id);
+                            });
+                        };
+
+                        return (
+                            <div key={group.ticket || gIdx} className={`mobile-deck-card ${head._groupClass || ''}`}>
+                                {/* Shared Ticket Header */}
+                                <div className="deck-top">
+                                    <div className="deck-top-left">
+                                        <input
+                                            type="checkbox"
+                                            className="deck-checkbox"
+                                            checked={allSelected}
+                                            onChange={toggleGroupSelect}
+                                        />
+                                        <span
+                                            className="deck-ticket"
+                                            onClick={(e) => { e.stopPropagation(); onTicketClick?.(head); }}
+                                        >
+                                            {head['Ticket Number']}
+                                        </span>
+                                        {head['Call Type'] && <span className="deck-type">{head['Call Type']}</span>}
+                                        <span className="deck-brand" title={head['Brand']}>{head['Brand']}</span>
+                                        <span className="deck-days">{dayRepair}ว.</span>
+                                        {group.items.length > 1 && (
+                                            <span className="deck-item-count">{group.items.length}</span>
+                                        )}
+                                    </div>
+                                    <span
+                                        className="deck-status-badge"
+                                        style={{ color: getStatusColor(head['StatusCall']), borderColor: getStatusColor(head['StatusCall']) }}
+                                        onClick={(e) => { e.stopPropagation(); onStatusGroupClick?.(head); }}
+                                    >
+                                        {head['StatusCall']}
+                                    </span>
+                                </div>
+
+                                <div className="deck-unit-row">
+                                    <span className="deck-unit">
+                                        {teamPlantCleaned} → <strong>{head['ค้างหน่วยงาน']}</strong>
+                                        {head['Team'] ? ` (${head['Team']})` : ''}
+                                    </span>
+                                </div>
+
+                                {/* Items inside this Ticket */}
+                                <div className="deck-items-stack">
+                                    {group.items.map((row, idx) => {
+                                        const nawaVal = pf(row['Nawa']);
+                                        const vipaVal = pf(row['Vipa']);
+                                        const requestVal = pf(row['Request']);
+                                        const qtyPlantVal = pf(row['QtyPlant']);
+                                        const otherPlantVal = pf(row['OtherPlant']);
+                                        const engVal = pf(row['EngQty']);
+                                        const prVal = pf(row['PR']);
+                                        const poVal = pf(row['PO']);
+                                        const statusXVal = row['StatusX'] || row['StatusCall'] || '';
+                                        const pendingUnit = (row['ค้างหน่วยงาน'] || '').trim();
+                                        const rowTeamPlant = cleanTeamPlant(row['TeamPlant']);
+                                        const materialVal = (row['Material'] || '').toString().trim();
+                                        const descVal = (row['Description'] || '').toString().trim();
+                                        const isMismatchVipa = pendingUnit === 'Stock วิภาวดี 62'
+                                            && rowTeamPlant !== 'วิภาวดี 62'
+                                            && materialVal !== '' && materialVal !== '-'
+                                            && descVal !== '' && descVal !== '-';
+                                        const hasRebuilt = row['Rebuilt'] && String(row['Rebuilt']).trim() !== '-' && String(row['Rebuilt']).trim() !== '0';
+
+                                        return (
+                                            <div key={row.id || idx} className="deck-subitem">
+                                                <div className="deck-mid">
+                                                    <span className={`deck-mat ${isMismatchVipa ? 'strike' : ''}`}>{row['Material']}</span>
+                                                    {row['จำนวน'] !== undefined && row['จำนวน'] !== null && row['จำนวน'] !== '' && (
+                                                        <span className="deck-pill dark-red">×{row['จำนวน']}</span>
+                                                    )}
+                                                    <span className={`deck-desc ${isMismatchVipa ? 'strike' : ''}`} title={row['Description']}>
+                                                        {row['Description']}
+                                                    </span>
+                                                    {hasRebuilt && (
+                                                        <span
+                                                            className="deck-pill blue"
+                                                            onClick={(e) => { e.stopPropagation(); onRebuiltClick?.(row); }}
+                                                        >
+                                                            แทน:{row['Rebuilt']}
+                                                        </span>
+                                                    )}
+                                                    <span
+                                                        className="deck-item-status"
+                                                        style={{ color: getStatusColor(statusXVal) }}
+                                                        onClick={(e) => { e.stopPropagation(); onStatusXClick?.(row); }}
+                                                    >
+                                                        {statusXVal}
+                                                    </span>
+                                                </div>
+
+                                                <div className="deck-foot">
+                                                    <div className="deck-pills">
+                                                        {prVal > 0 && <span className="deck-pill pink" onClick={(e) => { e.stopPropagation(); onPrClick?.(row); }}>PR:{row['PR']}</span>}
+                                                        {poVal > 0 && <span className="deck-pill blue" onClick={(e) => { e.stopPropagation(); onPoClick?.(row); }}>PO:{row['PO']}</span>}
+                                                        {nawaVal > 0 && <span className="deck-pill green" onClick={(e) => { e.stopPropagation(); onNawaClick?.(row); }}>นว:{row['Nawa']}</span>}
+                                                        {vipaVal > 0 && <span className="deck-pill orange">วภ:{row['Vipa']}</span>}
+                                                        {requestVal > 0 && <span className="deck-pill teal">นอก:{row['Request']}</span>}
+                                                        {engVal > 0 && <span className="deck-pill cyan" onClick={(e) => { e.stopPropagation(); onEngClick?.(row); }}>ช่าง:{row['EngQty']}</span>}
+                                                        {qtyPlantVal > 0 && <span className="deck-pill purple">คลัง:{row['QtyPlant']}</span>}
+                                                        {otherPlantVal > 0 && <span className="deck-pill magenta" onClick={(e) => { e.stopPropagation(); onOtherPlantClick?.(row); }}>อื่น:{row['OtherPlant']}</span>}
+                                                        {row['คลังตอบ'] && (
+                                                            <span
+                                                                className="deck-ans-text"
+                                                                style={{
+                                                                    color: row['คลังตอบ'] === 'รอตรวจสอบ' ? 'var(--danger-color)' :
+                                                                        row['คลังตอบ'] === 'ดำเนินการแล้ว' ? 'var(--success-color)' : '#475569'
+                                                                }}
+                                                            >
+                                                                {row['คลังตอบ']}
+                                                            </span>
+                                                        )}
+                                                        {row['UserAns'] && <span className="deck-ans-user">{row['UserAns']}</span>}
+                                                    </div>
+                                                    <button type="button" className="deck-detail-btn" onClick={() => onDetailClick?.(row)}>
+                                                        รายละเอียด
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
             </div>
 
             <div className="pagination">

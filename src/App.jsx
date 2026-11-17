@@ -439,10 +439,28 @@ function App() {
       {isLoggedIn && (
         <div id="appContent" className="app-content">
           <AppHeader
+            user={currentUser}
+            onLogout={() => {
+              localStorage.removeItem('user');
+              setIsLoggedIn(false);
+              setCurrentUser(null);
+            }}
             lastUpdated={lastUpdated}
             onRefresh={refreshData}
             isLoading={isLoading}
             isScrolled={scrollY > 25}
+            showAllCards={showAllCards}
+            onToggleAllCards={handleToggleAllCards}
+            onOpenGraph={() => setGraphOpen(true)}
+            onOpenSpareSummary={() => window.open('?page=spare-summary', '_blank')}
+            onOpenSummary={() => setSummaryOpen(true)}
+            onPrintTable={handlePrintAction}
+            onExportCSV={handleExportCsvAction}
+            onUpdateGuide={() => setUpdateGuideOpen(true)}
+            selectedCount={selectedRows.length}
+            onOpenFilters={() => setRightDrawerTab(prev => prev === 'filters' ? null : 'filters')}
+            isFiltersOpen={rightDrawerTab === 'filters'}
+            activeFilterCount={activeFilterCount}
           />
 
           {error && (
@@ -642,6 +660,7 @@ function App() {
                     callTypeStats={summary.callTypeStats}
                     onCallTypeClick={handleDashboardClick}
                     isAdmin={currentUser?.Status === 'Admin'}
+                    showAllCards={showAllCards}
                   />
                 </div>
 

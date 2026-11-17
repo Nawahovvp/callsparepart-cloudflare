@@ -48,6 +48,7 @@ async function fetchQuickData(fresh = false) {
     const callMaterials = collectCallMaterials(mainData);
     return jsonResponse({
         mainData,
+        dateUpdateData: data.dateUpdateData || [],
         requestData: selectColumns(data.requestData, QUICK_DATA_COLUMNS.requestData),
         vipaData: selectColumns(filterStockRows(data.vipaData, callMaterials), QUICK_DATA_COLUMNS.vipaData),
         nawaData: selectColumns(filterStockRows(data.nawaData, callMaterials), QUICK_DATA_COLUMNS.nawaData),

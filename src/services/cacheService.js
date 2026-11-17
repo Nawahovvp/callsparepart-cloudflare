@@ -10,7 +10,7 @@ const DEFAULT_MAX_AGE = 30 * 60 * 1000; // 30 minutes
 let dbPromise;
 
 export const CACHEABLE_KEYS = [
-    'mainData', 'requestData', 'poData', 'prData', 'mainSapData', 
+    'mainData', 'dateUpdateData', 'requestData', 'poData', 'prData', 'mainSapData', 
     'vipaData', 'nawaData', 'plantStockData', 'newPartData', 
     'projectData', 'teamPlantData', 'engData'
 ];
