@@ -4177,6 +4177,22 @@
       text-overflow: clip !important;
     }
 
+    table#data-table td.merged-ticket-cell {
+      vertical-align: middle !important;
+      text-align: center !important;
+      height: auto !important;
+      max-height: none !important;
+    }
+
+    table#data-table td[data-column="Brand"],
+    table#data-table td[data-column="Brand"].merged-ticket-cell,
+    table#data-table td[data-column="Ticket Number"],
+    table#data-table td[data-column="Ticket Number"].merged-ticket-cell,
+    table#data-table td[data-column="UserAns"],
+    table#data-table td[data-column="UserAns"].merged-ticket-cell {
+      text-align: left !important;
+    }
+
     /* ===== Modern Filter Buttons ===== */
     .modern-filter-btn {
       position: relative;

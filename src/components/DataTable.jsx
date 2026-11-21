@@ -4,6 +4,73 @@ import { TABLE_COLUMNS } from '../utils/helpers';
 const HIDDEN_COLUMN_KEYS = new Set(['StockStartDate', 'Answer1', 'IDPlant', 'Equipment']);
 const COLUMNS = TABLE_COLUMNS.filter(({ key }) => !HIDDEN_COLUMN_KEYS.has(key));
 
+const MERGEABLE_COLUMNS = {
+    StatusGroup: (row) => `${row['StatusCall'] ?? ''}__${row._isManualStatusCall ? '1' : '0'}`,
+    DayRepair: (row) => (!isNaN(parseFloat(row['DayRepair'])) ? String(Math.floor(parseFloat(row['DayRepair']))) : '-'),
+    DateTime: (row) => String(extractDate(row['DateTime']) ?? ''),
+    Brand: (row) => String(row['Brand'] ?? '').trim(),
+    'Call Type': (row) => String(row['Call Type'] ?? '').trim(),
+    Team: (row) => String(row['Team'] ?? '').trim(),
+    TeamPlant: (row) => cleanTeamPlant(row['TeamPlant']),
+    'ค้างหน่วยงาน': (row) => String(row['ค้างหน่วยงาน'] ?? '').trim(),
+    'Ticket Number': (row) => String(row['Ticket Number'] ?? '').trim(),
+    PendingStockDays: (row) => (!row['PendingStockDays'] || row['PendingStockDays'] === '0' || row['PendingStockDays'] === '-') ? '0' : String(row['PendingStockDays']).trim(),
+    'คลังตอบ': (row) => String(row['คลังตอบ'] ?? '').trim(),
+    'วันที่ตอบ': (row) => formatAnswerDate(row['วันที่ตอบ']),
+    UserAns: (row) => `${String(row['UserAns'] ?? '').trim()}__${String(row['คลังตอบ'] ?? '').trim()}`
+};
+
+function getTicketKey(row) {
+    const ticket = String(row?.['Ticket Number'] ?? '').trim();
+    return ticket && ticket !== '-' ? ticket : '';
+}
+
+function computeRowSpans(rows) {
+    const mergeKeys = Object.keys(MERGEABLE_COLUMNS);
+    const spans = rows.map(() => {
+        const obj = {};
+        mergeKeys.forEach((k) => { obj[k] = 1; });
+        return obj;
+    });
+
+    let i = 0;
+    while (i < rows.length) {
+        const ticketKey = getTicketKey(rows[i]);
+        if (!ticketKey) {
+            i += 1;
+            continue;
+        }
+        let j = i + 1;
+        while (j < rows.length && getTicketKey(rows[j]) === ticketKey) {
+            j += 1;
+        }
+        if (j - i > 1) {
+            mergeKeys.forEach((colKey) => {
+                const getter = MERGEABLE_COLUMNS[colKey];
+                let start = i;
+                while (start < j) {
+                    const baseVal = getter(rows[start]);
+                    let end = start + 1;
+                    while (end < j && getter(rows[end]) === baseVal) {
+                        end += 1;
+                    }
+                    const runLen = end - start;
+                    if (runLen > 1) {
+                        spans[start][colKey] = runLen;
+                        for (let k = start + 1; k < end; k++) {
+                            spans[k][colKey] = 0;
+                        }
+                    }
+                    start = end;
+                }
+            });
+        }
+        i = j;
+    }
+
+    return spans;
+}
+
 function addTicketGroupClasses(data) {
     let lastTicket = null;
     let isEvenGroup = false;
@@ -42,6 +109,7 @@ export default function DataTable({
     onEngClick
 }) {
     const dataWithGroup = React.useMemo(() => addTicketGroupClasses(data), [data]);
+    const rowSpans = React.useMemo(() => computeRowSpans(dataWithGroup), [dataWithGroup]);
 
     const mobileDeckGroups = React.useMemo(() => {
         const groups = [];
@@ -116,37 +184,64 @@ export default function DataTable({
                                     && descVal !== '' && descVal !== '-';
                                 const paddingClass = row._highlight ? `row-pulse-${row._highlight}` : '';
                                 const rowClassName = [row._groupClass, paddingClass].filter(Boolean).join(' ');
+                                const spans = rowSpans[index] || {};
+                                const mergedProps = (colKey, extraClass = '') => {
+                                    const span = spans[colKey] ?? 1;
+                                    const cls = [extraClass, span > 1 ? 'merged-ticket-cell' : ''].filter(Boolean).join(' ');
+                                    return {
+                                        rowSpan: span > 1 ? span : undefined,
+                                        className: cls || undefined
+                                    };
+                                };
                                 return (
                                     <tr key={row.id || index} className={rowClassName}>
                                         <td style={{ textAlign: 'center', width: 28 }}>
                                             <input type="checkbox" checked={selectedRows?.includes(row.id)} onChange={() => onSelectRow(row.id)} />
                                         </td>
                                         {/* StatusGroup */}
-                                        <td data-column="StatusGroup" className={row._isManualStatusCall ? 'manual-indicator' : ''}>
-                                            <span style={{
-                                                cursor: 'pointer', textDecoration: 'underline',
-                                                color: getStatusColor(row['StatusCall']), fontWeight: 'bold'
-                                            }} onClick={(e) => { e.stopPropagation(); onStatusGroupClick?.(row); }}>
-                                                {row['StatusCall']}
-                                            </span>
-                                            {row._isManualStatusCall && <span className="manual-pill">Manual</span>}
-                                        </td>
+                                        {spans['StatusGroup'] > 0 && (
+                                            <td data-column="StatusGroup" {...mergedProps('StatusGroup', row._isManualStatusCall ? 'manual-indicator' : '')}>
+                                                <span style={{
+                                                    cursor: 'pointer', textDecoration: 'underline',
+                                                    color: getStatusColor(row['StatusCall']), fontWeight: 'bold'
+                                                }} onClick={(e) => { e.stopPropagation(); onStatusGroupClick?.(row); }}>
+                                                    {row['StatusCall']}
+                                                </span>
+                                                {row._isManualStatusCall && <span className="manual-pill">Manual</span>}
+                                            </td>
+                                        )}
                                         {/* DayRepair */}
-                                        <td data-column="DayRepair" style={{ textAlign: 'center' }}>
-                                            {!isNaN(parseFloat(row['DayRepair'])) ? Math.floor(parseFloat(row['DayRepair'])) : '-'}
-                                        </td>
-                                        <td data-column="DateTime">{extractDate(row['DateTime'])}</td>
-                                        <td data-column="Brand">{row['Brand']}</td>
-                                        <td data-column="Call Type">{row['Call Type']}</td>
-                                        <td data-column="Team">{row['Team']}</td>
-                                        <td data-column="TeamPlant">{cleanTeamPlant(row['TeamPlant'])}</td>
-                                        <td data-column="ค้างหน่วยงาน">{row['ค้างหน่วยงาน']}</td>
-                                        <td data-column="Ticket Number">
-                                            <span style={{ cursor: 'pointer', textDecoration: 'underline', color: '#0d6efd', fontWeight: 'bold' }}
-                                                onClick={(e) => { e.stopPropagation(); onTicketClick?.(row); }}>
-                                                {row['Ticket Number']}
-                                            </span>
-                                        </td>
+                                        {spans['DayRepair'] > 0 && (
+                                            <td data-column="DayRepair" {...mergedProps('DayRepair')} style={{ textAlign: 'center' }}>
+                                                {!isNaN(parseFloat(row['DayRepair'])) ? Math.floor(parseFloat(row['DayRepair'])) : '-'}
+                                            </td>
+                                        )}
+                                        {spans['DateTime'] > 0 && (
+                                            <td data-column="DateTime" {...mergedProps('DateTime')}>{extractDate(row['DateTime'])}</td>
+                                        )}
+                                        {spans['Brand'] > 0 && (
+                                            <td data-column="Brand" {...mergedProps('Brand')}>{row['Brand']}</td>
+                                        )}
+                                        {spans['Call Type'] > 0 && (
+                                            <td data-column="Call Type" {...mergedProps('Call Type')}>{row['Call Type']}</td>
+                                        )}
+                                        {spans['Team'] > 0 && (
+                                            <td data-column="Team" {...mergedProps('Team')}>{row['Team']}</td>
+                                        )}
+                                        {spans['TeamPlant'] > 0 && (
+                                            <td data-column="TeamPlant" {...mergedProps('TeamPlant')}>{cleanTeamPlant(row['TeamPlant'])}</td>
+                                        )}
+                                        {spans['ค้างหน่วยงาน'] > 0 && (
+                                            <td data-column="ค้างหน่วยงาน" {...mergedProps('ค้างหน่วยงาน')}>{row['ค้างหน่วยงาน']}</td>
+                                        )}
+                                        {spans['Ticket Number'] > 0 && (
+                                            <td data-column="Ticket Number" {...mergedProps('Ticket Number')}>
+                                                <span style={{ cursor: 'pointer', textDecoration: 'underline', color: '#0d6efd', fontWeight: 'bold' }}
+                                                    onClick={(e) => { e.stopPropagation(); onTicketClick?.(row); }}>
+                                                    {row['Ticket Number']}
+                                                </span>
+                                            </td>
+                                        )}
                                         <td data-column="Material" style={isMismatchVipa ? { textDecoration: 'line-through', color: 'var(--danger-color)', fontWeight: 'bold' } : undefined}>{row['Material']}</td>
                                         <td data-column="Description" style={isMismatchVipa ? { textDecoration: 'line-through', color: 'var(--danger-color)', fontWeight: 'bold' } : undefined}>{row['Description']}</td>
                                         {/* Rebuilt */}
@@ -216,15 +311,19 @@ export default function DataTable({
                                             ) : ''}
                                         </td>
                                         {/* PendingStockDays */}
-                                        <td data-column="PendingStockDays" style={{ fontWeight: 'bold', color: 'var(--danger-color)', textAlign: 'center' }}>
-                                            {(!row['PendingStockDays'] || row['PendingStockDays'] === "0" || row['PendingStockDays'] === "-") ? "0" : row['PendingStockDays']}
-                                        </td>
+                                        {spans['PendingStockDays'] > 0 && (
+                                            <td data-column="PendingStockDays" {...mergedProps('PendingStockDays')} style={{ fontWeight: 'bold', color: 'var(--danger-color)', textAlign: 'center' }}>
+                                                {(!row['PendingStockDays'] || row['PendingStockDays'] === "0" || row['PendingStockDays'] === "-") ? "0" : row['PendingStockDays']}
+                                            </td>
+                                        )}
                                         {/* คลังตอบ */}
-                                        <td data-column="คลังตอบ" style={{
-                                            color: row['คลังตอบ'] === 'รอตรวจสอบ' ? 'var(--danger-color)' :
-                                                row['คลังตอบ'] === 'ดำเนินการแล้ว' ? 'var(--success-color)' : 'inherit',
-                                            fontWeight: ['รอตรวจสอบ', 'ดำเนินการแล้ว'].includes(row['คลังตอบ']) ? 'bold' : 'normal'
-                                        }}>{row['คลังตอบ']}</td>
+                                        {spans['คลังตอบ'] > 0 && (
+                                            <td data-column="คลังตอบ" {...mergedProps('คลังตอบ')} style={{
+                                                color: row['คลังตอบ'] === 'รอตรวจสอบ' ? 'var(--danger-color)' :
+                                                    row['คลังตอบ'] === 'ดำเนินการแล้ว' ? 'var(--success-color)' : 'inherit',
+                                                fontWeight: ['รอตรวจสอบ', 'ดำเนินการแล้ว'].includes(row['คลังตอบ']) ? 'bold' : 'normal'
+                                            }}>{row['คลังตอบ']}</td>
+                                        )}
                                         {/* StatusCall (StatusX) */}
                                         <td data-column="StatusCall" className={row._isManualStatusX ? 'manual-indicator' : ''} style={{
                                             cursor: 'pointer', textDecoration: 'underline',
@@ -233,16 +332,20 @@ export default function DataTable({
                                             {statusXVal}
                                             {row._isManualStatusX && <span className="manual-pill">Manual</span>}
                                         </td>
-                                        <td data-column="วันที่ตอบ">{formatAnswerDate(row['วันที่ตอบ'])}</td>
-                                        <td data-column="UserAns">
-                                            {row['UserAns'] ? (
-                                                <span className="request-pill" style={{
-                                                    backgroundColor: row['คลังตอบ'] === 'ดำเนินการแล้ว' ? 'var(--success-color)' :
-                                                        row['คลังตอบ'] === 'รอตรวจสอบ' ? 'var(--danger-color)' : '#6c757d',
-                                                    color: '#fff'
-                                                }}>{row['UserAns']}</span>
-                                            ) : ''}
-                                        </td>
+                                        {spans['วันที่ตอบ'] > 0 && (
+                                            <td data-column="วันที่ตอบ" {...mergedProps('วันที่ตอบ')}>{formatAnswerDate(row['วันที่ตอบ'])}</td>
+                                        )}
+                                        {spans['UserAns'] > 0 && (
+                                            <td data-column="UserAns" {...mergedProps('UserAns')}>
+                                                {row['UserAns'] ? (
+                                                    <span className="request-pill" style={{
+                                                        backgroundColor: row['คลังตอบ'] === 'ดำเนินการแล้ว' ? 'var(--success-color)' :
+                                                            row['คลังตอบ'] === 'รอตรวจสอบ' ? 'var(--danger-color)' : '#6c757d',
+                                                        color: '#fff'
+                                                    }}>{row['UserAns']}</span>
+                                                ) : ''}
+                                            </td>
+                                        )}
                                         {/* Detail */}
                                         <td data-column="detail">
                                             <button className="detail-button" onClick={() => onDetailClick?.(row)}>ดูรายละเอียด</button>
