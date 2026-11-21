@@ -17,11 +17,13 @@ export default function ControlPanel({
     onOpenFilters,
     totalCount = 0,
     totalQuantity = 0,
-    activeFilterCount = 0
+    activeFilterCount = 0,
+    pendingUnitOptions = {},
+    pendingUnitAllDone = {},
+    userPendingUnit = ''
 }) {
     const activeChips = [];
     if (teamPlantFilter) activeChips.push({ key: 'tp', label: `ศูนย์พื้นที่: ${teamPlantFilter}`, onClear: () => onTeamPlantChange('') });
-    if (pendingUnitFilter) activeChips.push({ key: 'pu', label: `ค้างหน่วยงาน: ${pendingUnitFilter}`, onClear: () => onPendingUnitChange('') });
     if (stockAnswerFilter) activeChips.push({ key: 'sa', label: `คลังตอบ: ${stockAnswerFilter}`, onClear: () => onStockAnswerChange('') });
     if (statusCallFilter) activeChips.push({ key: 'sc', label: `StatusCall: ${statusCallFilter}`, onClear: onClearAllFilters });
     if (dashboardFilter) {
@@ -33,6 +35,20 @@ export default function ControlPanel({
         });
     }
     if (gmFilter) activeChips.push({ key: 'gm', label: `GM: ${gmFilter.replace('gm_', '')}`, onClear: onClearAllFilters });
+
+    const sortedPendingUnits = React.useMemo(() => {
+        const entries = Object.entries(pendingUnitOptions || {}).sort((a, b) => b[1] - a[1]);
+        if (!userPendingUnit) return entries;
+        const userIdx = entries.findIndex(([key]) => key === userPendingUnit);
+        if (userIdx <= 0) return entries;
+        const [userEntry] = entries.splice(userIdx, 1);
+        return [userEntry, ...entries];
+    }, [pendingUnitOptions, userPendingUnit]);
+
+    const totalPendingUnitItems = React.useMemo(
+        () => sortedPendingUnits.reduce((sum, [, count]) => sum + count, 0),
+        [sortedPendingUnits]
+    );
 
     return (
         <div id="searchContainer" className="modern-search-bar">
@@ -81,6 +97,44 @@ export default function ControlPanel({
                     รวมจำนวน <strong>{totalQuantity.toLocaleString()}</strong> ชิ้น
                 </span>
             </div>
+
+            {sortedPendingUnits.length > 0 && (
+                <div className="quick-unit-bar" role="group" aria-label="ตัวกรองด่วน ค้างหน่วยงาน">
+                    <span className="quick-unit-label">
+                        <i className="fas fa-layer-group"></i>
+                        <span>ค้างหน่วยงาน</span>
+                    </span>
+                    <div className="quick-unit-chips">
+                        <button
+                            type="button"
+                            className={`quick-unit-chip ${!pendingUnitFilter ? 'active' : ''}`}
+                            onClick={() => onPendingUnitChange('')}
+                        >
+                            <span>ทั้งหมด</span>
+                            <span className="quick-unit-count">{totalPendingUnitItems}</span>
+                        </button>
+                        {sortedPendingUnits.map(([key, count]) => {
+                            const isActive = pendingUnitFilter === key;
+                            const isClear = pendingUnitAllDone?.[key] === true;
+                            const isUserUnit = Boolean(userPendingUnit && userPendingUnit === key);
+                            const displayLabel = String(key).replace(/^Stock\s*/i, '').trim() || key;
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    className={`quick-unit-chip ${isActive ? 'active' : ''} ${isClear ? 'clear' : ''} ${isUserUnit ? 'is-user-unit' : ''}`}
+                                    onClick={() => onPendingUnitChange(isActive ? '' : key)}
+                                    title={isUserUnit ? `หน่วยงานของคุณ (${key})` : `กรองค้างหน่วยงาน: ${key}`}
+                                >
+                                    {isUserUnit && <i className="fas fa-user quick-unit-user-icon" aria-hidden="true"></i>}
+                                    <span>{displayLabel}</span>
+                                    <span className="quick-unit-count">{count}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {activeChips.length > 0 && (
                 <div className="active-filters-strip">

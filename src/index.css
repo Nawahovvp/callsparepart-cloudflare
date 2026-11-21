@@ -6639,3 +6639,269 @@
 .result-count-pill.qty-pill strong {
     color: #1e40af;
 }
+
+/* Quick Filter Strip for ค้างหน่วยงาน */
+.quick-unit-bar {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.quick-unit-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    white-space: nowrap;
+    padding: 5px 2px 4px 0;
+    flex-shrink: 0;
+}
+
+.quick-unit-label i {
+    color: #2563eb;
+    font-size: 11px;
+}
+
+.quick-unit-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.quick-unit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 99px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    line-height: 1.3;
+}
+
+.quick-unit-chip:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.quick-unit-chip.is-user-unit {
+    border-color: #93c5fd;
+    background: #f0f9ff;
+    color: #0369a1;
+}
+
+.quick-unit-chip.is-user-unit:hover {
+    background: #e0f2fe;
+    border-color: #60a5fa;
+}
+
+.quick-unit-user-icon {
+    font-size: 10px;
+    opacity: 0.85;
+}
+
+.quick-unit-chip.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+.quick-unit-chip.clear {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #166534;
+}
+
+.quick-unit-chip.clear:hover {
+    background: #bbf7d0;
+    border-color: #4ade80;
+}
+
+.quick-unit-chip.clear.active {
+    background: #16a34a;
+    border-color: #16a34a;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+}
+
+.quick-unit-count {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 0 5px;
+    border-radius: 99px;
+    background: rgba(15, 23, 42, 0.08);
+    line-height: 1.45;
+}
+
+.quick-unit-chip.active .quick-unit-count {
+    background: rgba(255, 255, 255, 0.24);
+    color: #ffffff;
+}
+
+@media (max-width: 768px) {
+    .quick-unit-bar {
+        flex-direction: column;
+        gap: 5px;
+        margin-top: 8px;
+        padding-top: 8px;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .quick-unit-label {
+        padding: 0;
+        font-size: 11px;
+    }
+
+    .quick-unit-chips {
+        flex-wrap: wrap;
+        overflow-x: visible;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        gap: 4px;
+        padding-bottom: 0;
+    }
+
+    .quick-unit-chip {
+        padding: 3px 7px;
+        font-size: 10.5px;
+        gap: 4px;
+        max-width: 100%;
+    }
+
+    .quick-unit-count {
+        font-size: 9.5px;
+        padding: 0 4px;
+    }
+
+    /* Compact Mobile Cards Layout */
+    .modern-search-bar {
+        margin: 6px 8px !important;
+        padding: 8px 10px !important;
+        border-radius: 10px !important;
+        max-width: calc(100% - 16px) !important;
+        box-sizing: border-box !important;
+        overflow: hidden;
+    }
+
+    #dashboard.dashboard-grouped {
+        padding: 4px 8px !important;
+        gap: 6px !important;
+    }
+
+    .dashboard-row-wrap {
+        gap: 6px !important;
+    }
+
+    .dashboard-group-frame {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 5px !important;
+        padding: 5px !important;
+        border-radius: 10px !important;
+    }
+
+    .dashboard-extra-slot {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 5px !important;
+        width: 100% !important;
+    }
+
+    .dashboard-extra-slot .dashboard-card {
+        min-width: 0 !important;
+    }
+
+    #analyticsDashboard.dashboard {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 5px !important;
+        padding: 4px 8px !important;
+        margin: 2px 0 !important;
+    }
+
+    .group-cards-section {
+        margin-top: 8px !important;
+        padding: 0 8px !important;
+    }
+
+    .group-cards-section h2 {
+        font-size: 0.9rem !important;
+        margin-bottom: 6px !important;
+    }
+
+    .group-dashboard {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 5px !important;
+        padding: 0 !important;
+    }
+
+    .dashboard-card,
+    .dashboard-card.group-card {
+        padding: 6px 7px !important;
+        min-height: 0 !important;
+        min-width: 0 !important;
+        border-radius: 8px !important;
+        gap: 2px !important;
+    }
+
+    .dashboard-card h3,
+    .dashboard-card.group-card h3 {
+        font-size: 10px !important;
+        line-height: 1.2 !important;
+        margin: 0 0 2px 0 !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .dashboard-card .value,
+    .dashboard-card.group-card .value {
+        font-size: 15px !important;
+        line-height: 1.15 !important;
+        margin: 1px 0 !important;
+    }
+
+    #maxCard .value {
+        font-size: 11.5px !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .dashboard-card .progress-container {
+        height: 3px !important;
+        margin: 3px 0 2px !important;
+    }
+
+    .dashboard-card .progress-text {
+        font-size: 9.5px !important;
+        line-height: 1.1 !important;
+    }
+}
+
+@media (max-width: 380px) {
+    .dashboard-group-frame,
+    #analyticsDashboard.dashboard,
+    .group-dashboard {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}

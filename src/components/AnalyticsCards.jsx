@@ -60,7 +60,7 @@ export default function AnalyticsCards({
             >
                 <h3>Call ค้างสูงสุด</h3>
                 <div className="value" style={{ fontSize: '0.95em', paddingBottom: '2px', lineHeight: 1.2 }}>
-                    {summary.maxPendingUnit}
+                    {String(summary.maxPendingUnit || '-').replace(/^Stock\s*/i, '').trim() || summary.maxPendingUnit}
                 </div>
                 <div className="progress-text" style={{ fontSize: '0.78em', color: 'rgba(255,255,255,0.9)' }}>
                     {summary.maxPendingCount} Call

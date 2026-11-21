@@ -172,7 +172,7 @@ export default function RightMenuBar({
             <div className="right-drawer">
                 <div className="right-drawer-header">
                     <div className="right-drawer-title">
-                        <i className="fas fa-sliders-h"></i> ตัวกรองข้อมูล
+                        <i className="fas fa-sliders-h"></i> ตัวกรองเพิ่มเติม
                     </div>
                     <button
                         type="button"
@@ -202,15 +202,6 @@ export default function RightMenuBar({
                             activeValue={teamPlantFilter}
                             onSelect={onTeamPlantChange}
                             sectioned={true}
-                            defaultOpen={false}
-                        />
-                        <DrawerFilterGroup
-                            title="ค้างหน่วยงาน"
-                            icon="fas fa-layer-group"
-                            options={availableFilters?.pendingUnit}
-                            activeValue={pendingUnitFilter}
-                            onSelect={onPendingUnitChange}
-                            noWaitingByKey={availableFilters?.pendingUnitAllDone}
                             defaultOpen={true}
                         />
                         <DrawerFilterGroup
@@ -220,7 +211,7 @@ export default function RightMenuBar({
                             activeValue={stockAnswerFilter}
                             onSelect={onStockAnswerChange}
                             useStatusColors={true}
-                            defaultOpen={false}
+                            defaultOpen={true}
                         />
                         {callTypeStats.some(item => item.value > 0) && (
                             <DrawerFilterGroup

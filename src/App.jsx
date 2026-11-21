@@ -213,14 +213,66 @@ function App() {
     [sortedData]
   );
 
-  const activeFilterCount = [
+  // Resolve logged-in user's default "ค้างหน่วยงาน" unit from available pending units
+  const userDefaultPendingUnit = React.useMemo(() => {
+    const unitMap = availableFilters?.pendingUnit;
+    if (!currentUser || !unitMap) return '';
+    const keys = Object.keys(unitMap);
+    if (keys.length === 0) return '';
+
+    const normalize = (val) => String(val || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const findKey = (target) => {
+      const normTarget = normalize(target);
+      if (!normTarget) return '';
+      return keys.find((k) => normalize(k) === normTarget) || '';
+    };
+
+    const byDept = findKey(currentUser['หน่วยงาน']);
+    if (byDept) return byDept;
+
+    const userPlant = String(currentUser.Plant || '').trim();
+    if (userPlant) {
+      const mappedEntry = Object.entries(PLANT_MAPPING).find(
+        ([unit, code]) => !/^\d+$/.test(unit) && String(code).trim() === userPlant
+      );
+      if (mappedEntry) {
+        const byPlant = findKey(mappedEntry[0]);
+        if (byPlant) return byPlant;
+      }
+    }
+
+    const byUnit = findKey(currentUser.Unit);
+    if (byUnit) return byUnit;
+
+    return '';
+  }, [currentUser, availableFilters?.pendingUnit]);
+
+  const appliedDefaultUnitUserRef = React.useRef(null);
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser) {
+      appliedDefaultUnitUserRef.current = null;
+      return;
+    }
+    const userKey = currentUser.IDRec || currentUser.Name || 'logged_in';
+    if (appliedDefaultUnitUserRef.current === userKey) return;
+    if (!availableFilters?.pendingUnit || Object.keys(availableFilters.pendingUnit).length === 0) return;
+
+    appliedDefaultUnitUserRef.current = userKey;
+    if (userDefaultPendingUnit) {
+      setPendingUnitFilter(userDefaultPendingUnit);
+      setCurrentPage(1);
+    }
+  }, [isLoggedIn, currentUser, availableFilters?.pendingUnit, userDefaultPendingUnit, setPendingUnitFilter]);
+
+  const secondaryFilterCount = [
     teamPlantFilter,
-    pendingUnitFilter,
     stockAnswerFilter,
     statusCallFilter,
     dashboardFilter,
     gmFilter
   ].filter(Boolean).length;
+
+  const activeFilterCount = secondaryFilterCount + (pendingUnitFilter ? 1 : 0);
 
   const handlePrintAction = async () => {
     if (selectedRows.length > 0) {
@@ -448,6 +500,7 @@ function App() {
               localStorage.removeItem('user');
               setIsLoggedIn(false);
               setCurrentUser(null);
+              setPendingUnitFilter('');
             }}
             lastUpdated={lastUpdated}
             onRefresh={refreshData}
@@ -464,7 +517,7 @@ function App() {
             selectedCount={selectedRows.length}
             onOpenFilters={() => setRightDrawerTab(prev => prev === 'filters' ? null : 'filters')}
             isFiltersOpen={rightDrawerTab === 'filters'}
-            activeFilterCount={activeFilterCount}
+            activeFilterCount={secondaryFilterCount}
           />
 
           {error && (
@@ -686,7 +739,10 @@ function App() {
                     onOpenFilters={() => setRightDrawerTab(prev => prev === 'filters' ? null : 'filters')}
                     totalCount={sortedData.length}
                     totalQuantity={totalQuantity}
-                    activeFilterCount={activeFilterCount}
+                    activeFilterCount={secondaryFilterCount}
+                    pendingUnitOptions={availableFilters?.pendingUnit}
+                    pendingUnitAllDone={availableFilters?.pendingUnitAllDone}
+                    userPendingUnit={userDefaultPendingUnit}
                   />
                 </div>
 
