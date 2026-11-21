@@ -1430,14 +1430,19 @@
     }
 
     .detail-button {
-      padding: 3px 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 22px;
+      padding: 0;
       background: var(--info-color);
       color: #fff;
       border: none;
       border-radius: 6px;
       cursor: pointer;
       transition: all .3s ease;
-      font-size: 10px;
+      font-size: 12px;
       white-space: nowrap;
     }
 

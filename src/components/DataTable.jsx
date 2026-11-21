@@ -1,5 +1,5 @@
 import React from 'react';
-import { TABLE_COLUMNS } from '../utils/helpers';
+import { TABLE_COLUMNS, formatStockAnswerLabel } from '../utils/helpers';
 
 const HIDDEN_COLUMN_KEYS = new Set(['StockStartDate', 'Answer1', 'IDPlant', 'Equipment']);
 const COLUMNS = TABLE_COLUMNS.filter(({ key }) => !HIDDEN_COLUMN_KEYS.has(key));
@@ -345,12 +345,20 @@ export default function DataTable({
                                                 color: row['คลังตอบ'] === 'รอตรวจสอบ' ? 'var(--danger-color)' :
                                                     row['คลังตอบ'] === 'ดำเนินการแล้ว' ? 'var(--success-color)' : 'inherit',
                                                 fontWeight: ['รอตรวจสอบ', 'ดำเนินการแล้ว'].includes(row['คลังตอบ']) ? 'bold' : 'normal'
-                                            }}>{row['คลังตอบ']}</td>
+                                            }}>{formatStockAnswerLabel(row['คลังตอบ'])}</td>
                                         )}
                                         {/* Detail */}
                                         {spans['detail'] > 0 && (
                                             <td data-column="detail" {...mergedProps('detail')}>
-                                                <button className="detail-button" onClick={() => onDetailClick?.(row)}>ดูรายละเอียด</button>
+                                                <button
+                                                    type="button"
+                                                    className="detail-button"
+                                                    title="ดูรายละเอียด"
+                                                    aria-label="ดูรายละเอียด"
+                                                    onClick={() => onDetailClick?.(row)}
+                                                >
+                                                    <i className="fas fa-eye" aria-hidden="true"></i>
+                                                </button>
                                             </td>
                                         )}
                                     </tr>
@@ -488,7 +496,7 @@ export default function DataTable({
                                                                         row['คลังตอบ'] === 'ดำเนินการแล้ว' ? 'var(--success-color)' : '#475569'
                                                                 }}
                                                             >
-                                                                {row['คลังตอบ']}
+                                                                {formatStockAnswerLabel(row['คลังตอบ'])}
                                                             </span>
                                                         )}
                                                         {row['UserAns'] && <span className="deck-ans-user">{row['UserAns']}</span>}

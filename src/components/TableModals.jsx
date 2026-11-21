@@ -907,6 +907,16 @@ export function TimelineModal({ isOpen, onClose, row }) {
         return match ? match[1] : dateTimeStr;
     }
 
+    function formatElapsedDuration(dayRepair) {
+        const val = parseFloat(dayRepair);
+        if (isNaN(val) || val < 0) return "-";
+        const totalMinutes = Math.floor(val * 24 * 60);
+        const days = Math.floor(totalMinutes / (24 * 60));
+        const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+        const minutes = totalMinutes % 60;
+        return `${days} วัน ${hours} ชม. ${minutes} นาที`;
+    }
+
     return (
         <div className="modal" style={{ zIndex: 1100 }}>
             <div className="premium-modal-content" style={{ maxWidth: '1100px' }}>
@@ -972,7 +982,7 @@ export function TimelineModal({ isOpen, onClose, row }) {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', marginBottom: '20px', background: 'rgba(255,255,255,0.5)', padding: '10px', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>ผ่านมา</div>
-                            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{row["DayRepair"] || "-"} วัน</div>
+                            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{formatElapsedDuration(row["DayRepair"])}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Brand</div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatStockAnswerLabel } from '../utils/helpers';
 
 export default function ControlPanel({
     searchTerm,
@@ -24,7 +25,7 @@ export default function ControlPanel({
 }) {
     const activeChips = [];
     if (teamPlantFilter) activeChips.push({ key: 'tp', label: `ศูนย์พื้นที่: ${teamPlantFilter}`, onClear: () => onTeamPlantChange('') });
-    if (stockAnswerFilter) activeChips.push({ key: 'sa', label: `คลังตอบ: ${stockAnswerFilter}`, onClear: () => onStockAnswerChange('') });
+    if (stockAnswerFilter) activeChips.push({ key: 'sa', label: `คลังตอบ: ${formatStockAnswerLabel(stockAnswerFilter)}`, onClear: () => onStockAnswerChange('') });
     if (statusCallFilter) activeChips.push({ key: 'sc', label: `StatusCall: ${statusCallFilter}`, onClear: onClearAllFilters });
     if (dashboardFilter) {
         const isCallType = dashboardFilter.startsWith?.('calltype_');

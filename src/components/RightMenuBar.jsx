@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { formatStockAnswerLabel } from '../utils/helpers';
 
 const STATUS_COLORS = {
     "รอของเข้า": "var(--danger-color)",
@@ -18,9 +19,10 @@ const STATUS_COLORS = {
     "แจ้งCodeผิด": "#e83e8c"
 };
 
-function DrawerFilterGroup({ title, icon, options, activeValue, onSelect, useStatusColors, defaultOpen = true, sectioned = false, noWaitingByKey, percentByKey }) {
+function DrawerFilterGroup({ title, icon, options, activeValue, onSelect, useStatusColors, defaultOpen = true, sectioned = false, noWaitingByKey, percentByKey, formatLabel }) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     const sorted = Object.entries(options || {}).sort((a, b) => b[1] - a[1]);
+    const getLabel = (val) => (formatLabel ? formatLabel(val) : val);
 
     const renderChips = (items) => (
         <div className="drawer-chip-grid">
@@ -37,7 +39,7 @@ function DrawerFilterGroup({ title, icon, options, activeValue, onSelect, useSta
                         onClick={() => onSelect(isActive ? '' : key)}
                         style={!isActive && color ? { borderColor: color, color } : {}}
                     >
-                        <span className="drawer-chip-label">{key}</span>
+                        <span className="drawer-chip-label">{getLabel(key)}</span>
                         <span className="drawer-chip-count">{pct !== undefined ? `${count} (${pct}%)` : count}</span>
                     </button>
                 );
@@ -58,7 +60,7 @@ function DrawerFilterGroup({ title, icon, options, activeValue, onSelect, useSta
                 <span className="drawer-accordion-title">
                     <i className={icon}></i>
                     <span>{title}</span>
-                    {activeValue && <span className="drawer-active-dot" title={`กำลังเลือก: ${activeValue}`}></span>}
+                    {activeValue && <span className="drawer-active-dot" title={`กำลังเลือก: ${getLabel(activeValue)}`}></span>}
                 </span>
                 <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'} drawer-accordion-arrow`}></i>
             </button>
@@ -71,7 +73,7 @@ function DrawerFilterGroup({ title, icon, options, activeValue, onSelect, useSta
                             className="drawer-clear-section"
                             onClick={() => onSelect('')}
                         >
-                            <i className="fas fa-times-circle"></i> ล้างตัวกรอง "{activeValue}"
+                            <i className="fas fa-times-circle"></i> ล้างตัวกรอง "{getLabel(activeValue)}"
                         </button>
                     )}
                     {sectioned ? (
@@ -211,6 +213,7 @@ export default function RightMenuBar({
                             activeValue={stockAnswerFilter}
                             onSelect={onStockAnswerChange}
                             useStatusColors={true}
+                            formatLabel={formatStockAnswerLabel}
                             defaultOpen={true}
                         />
                         {callTypeStats.some(item => item.value > 0) && (

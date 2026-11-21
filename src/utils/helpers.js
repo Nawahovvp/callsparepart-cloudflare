@@ -84,6 +84,13 @@ export function getDeptGroups(pendingUnit) {
     return DEPT_GROUPS.filter(g => g.test(unitStr)).map(g => g.key);
 }
 
+export function formatStockAnswerLabel(value) {
+    const text = String(value ?? '').trim();
+    if (text === 'ดำเนินการแล้ว') return 'Done';
+    if (text === 'รอตรวจสอบ') return 'Pending';
+    return text;
+}
+
 export const TABLE_COLUMNS = [
     { key: 'StatusGroup', label: 'StatusCall' },
     { key: 'DayRepair', label: 'ผ่านมา' },
