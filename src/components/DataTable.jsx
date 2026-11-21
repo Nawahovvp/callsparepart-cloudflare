@@ -17,7 +17,8 @@ const MERGEABLE_COLUMNS = {
     PendingStockDays: (row) => (!row['PendingStockDays'] || row['PendingStockDays'] === '0' || row['PendingStockDays'] === '-') ? '0' : String(row['PendingStockDays']).trim(),
     'คลังตอบ': (row) => String(row['คลังตอบ'] ?? '').trim(),
     'วันที่ตอบ': (row) => formatAnswerDate(row['วันที่ตอบ']),
-    UserAns: (row) => `${String(row['UserAns'] ?? '').trim()}__${String(row['คลังตอบ'] ?? '').trim()}`
+    UserAns: (row) => `${String(row['UserAns'] ?? '').trim()}__${String(row['คลังตอบ'] ?? '').trim()}`,
+    detail: () => 'detail'
 };
 
 function getTicketKey(row) {
@@ -310,20 +311,6 @@ export default function DataTable({
                                                     onClick={(e) => { e.stopPropagation(); onOtherPlantClick?.(row); }}>{row['OtherPlant']}</span>
                                             ) : ''}
                                         </td>
-                                        {/* PendingStockDays */}
-                                        {spans['PendingStockDays'] > 0 && (
-                                            <td data-column="PendingStockDays" {...mergedProps('PendingStockDays')} style={{ fontWeight: 'bold', color: 'var(--danger-color)', textAlign: 'center' }}>
-                                                {(!row['PendingStockDays'] || row['PendingStockDays'] === "0" || row['PendingStockDays'] === "-") ? "0" : row['PendingStockDays']}
-                                            </td>
-                                        )}
-                                        {/* คลังตอบ */}
-                                        {spans['คลังตอบ'] > 0 && (
-                                            <td data-column="คลังตอบ" {...mergedProps('คลังตอบ')} style={{
-                                                color: row['คลังตอบ'] === 'รอตรวจสอบ' ? 'var(--danger-color)' :
-                                                    row['คลังตอบ'] === 'ดำเนินการแล้ว' ? 'var(--success-color)' : 'inherit',
-                                                fontWeight: ['รอตรวจสอบ', 'ดำเนินการแล้ว'].includes(row['คลังตอบ']) ? 'bold' : 'normal'
-                                            }}>{row['คลังตอบ']}</td>
-                                        )}
                                         {/* StatusCall (StatusX) */}
                                         <td data-column="StatusCall" className={row._isManualStatusX ? 'manual-indicator' : ''} style={{
                                             cursor: 'pointer', textDecoration: 'underline',
@@ -346,10 +333,26 @@ export default function DataTable({
                                                 ) : ''}
                                             </td>
                                         )}
+                                        {/* PendingStockDays */}
+                                        {spans['PendingStockDays'] > 0 && (
+                                            <td data-column="PendingStockDays" {...mergedProps('PendingStockDays')} style={{ fontWeight: 'bold', color: 'var(--danger-color)', textAlign: 'center' }}>
+                                                {(!row['PendingStockDays'] || row['PendingStockDays'] === "0" || row['PendingStockDays'] === "-") ? "0" : row['PendingStockDays']}
+                                            </td>
+                                        )}
+                                        {/* คลังตอบ */}
+                                        {spans['คลังตอบ'] > 0 && (
+                                            <td data-column="คลังตอบ" {...mergedProps('คลังตอบ')} style={{
+                                                color: row['คลังตอบ'] === 'รอตรวจสอบ' ? 'var(--danger-color)' :
+                                                    row['คลังตอบ'] === 'ดำเนินการแล้ว' ? 'var(--success-color)' : 'inherit',
+                                                fontWeight: ['รอตรวจสอบ', 'ดำเนินการแล้ว'].includes(row['คลังตอบ']) ? 'bold' : 'normal'
+                                            }}>{row['คลังตอบ']}</td>
+                                        )}
                                         {/* Detail */}
-                                        <td data-column="detail">
-                                            <button className="detail-button" onClick={() => onDetailClick?.(row)}>ดูรายละเอียด</button>
-                                        </td>
+                                        {spans['detail'] > 0 && (
+                                            <td data-column="detail" {...mergedProps('detail')}>
+                                                <button className="detail-button" onClick={() => onDetailClick?.(row)}>ดูรายละเอียด</button>
+                                            </td>
+                                        )}
                                     </tr>
                                 );
                             })
