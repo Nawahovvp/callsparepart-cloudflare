@@ -82,14 +82,31 @@ export function useAppData() {
             setLastUpdated(incomingLatestUpdate.value);
         }
 
-        const completeData = isPartial && fullDataRef.current
+        const pickNonEmpty = (incoming, fallback) =>
+            Array.isArray(incoming) && incoming.length > 0 ? incoming : (fallback ?? incoming);
+
+        const prev = fullDataRef.current;
+        const completeData = prev
             ? {
-                ...fullDataRef.current,
+                ...prev,
+                ...(isPartial ? {} : fetchResult),
                 mainData: effectiveMainData,
-                dateUpdateData: fetchResult?.dateUpdateData ?? fullDataRef.current.dateUpdateData,
-                requestData: fetchResult?.requestData ?? fullDataRef.current.requestData,
-                vipaData: fetchResult?.vipaData ?? fullDataRef.current.vipaData,
-                nawaData: fetchResult?.nawaData ?? fullDataRef.current.nawaData
+                dateUpdateData: pickNonEmpty(fetchResult?.dateUpdateData, prev.dateUpdateData),
+                requestData: pickNonEmpty(fetchResult?.requestData, prev.requestData),
+                vipaData: pickNonEmpty(fetchResult?.vipaData, prev.vipaData),
+                nawaData: pickNonEmpty(fetchResult?.nawaData, prev.nawaData),
+                ...(isPartial ? {} : {
+                    poData: pickNonEmpty(fetchResult?.poData, prev.poData),
+                    prData: pickNonEmpty(fetchResult?.prData, prev.prData),
+                    mainSapData: pickNonEmpty(fetchResult?.mainSapData, prev.mainSapData),
+                    plantStockData: pickNonEmpty(fetchResult?.plantStockData, prev.plantStockData),
+                    newPartData: pickNonEmpty(fetchResult?.newPartData, prev.newPartData),
+                    projectData: pickNonEmpty(fetchResult?.projectData, prev.projectData),
+                    teamPlantData: pickNonEmpty(fetchResult?.teamPlantData, prev.teamPlantData),
+                    engData: Array.isArray(fetchResult?.engData) && fetchResult.engData.some(s => s?.data?.length > 0)
+                        ? fetchResult.engData
+                        : prev.engData
+                })
             }
             : {
                 ...fetchResult,

@@ -475,15 +475,19 @@ export function processRawData(
     engData
 ) {
     const nawaDescriptionByMaterial = new Map();
-    if (Array.isArray(nawaData)) {
-        nawaData.forEach(row => {
+    const registerMaterialDescriptions = (rows) => {
+        if (!Array.isArray(rows)) return;
+        rows.forEach(row => {
             const material = normalizeMaterial(row?.Material);
             const description = row?.["Material description"] || row?.["Material description old"] || row?.Description || "";
             if (material && description && !nawaDescriptionByMaterial.has(material)) {
                 nawaDescriptionByMaterial.set(material, description);
             }
         });
-    }
+    };
+    registerMaterialDescriptions(nawaData);
+    registerMaterialDescriptions(vipaData);
+    registerMaterialDescriptions(plantStockData);
 
     const normalizedMainData = Array.isArray(mainData)
         ? mainData.map(row => {
