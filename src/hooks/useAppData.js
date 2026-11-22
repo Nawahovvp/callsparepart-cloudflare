@@ -473,32 +473,21 @@ export function useAppData() {
                 } else {
                     const validRows = ticketRows.filter(r => r.StatusX !== "แจ้งCodeผิด");
                     const evals = validRows.length > 0 ? validRows : ticketRows;
+                    const allOtherPlant = validRows.length > 0 && validRows.every(r => {
+                        const op = r["OtherPlant"];
+                        return r.StatusX === "ดึงจากคลังอื่น" || (r.StatusX === "รอของเข้า" && op !== undefined && op !== null && op !== "" && op !== "-" && op !== 0 && op !== "0");
+                    });
 
                     if (evals.some(r => r.StatusX === "เปิดรหัสใหม่")) newStatusCall = "เปิดรหัสใหม่";
                     else if (evals.some(r => r.StatusX === "ขอซื้อขอซ่อม")) newStatusCall = "ขอซื้อขอซ่อม";
                     else if (evals.some(r => r.StatusX === "เกินLeadtime")) newStatusCall = "เกินLeadtime";
-                    else if (evals.some(r => r.StatusX === "รอของเข้า")) newStatusCall = "รอของเข้า";
-                    else if (evals.some(r => r.StatusX === "เบิกนวนคร" || r.StatusX === "เบิกวิภาวดี")) newStatusCall = "เบิกศูนย์อะไหล่";
-                    else if (evals.some(r => r.StatusX === "ระหว่างขนส่ง")) newStatusCall = "ระหว่างขนส่ง";
                     else if (evals.some(r => r.StatusX === "มีอะไหล่ในทีม")) newStatusCall = "มีอะไหล่ในทีม";
                     else if (evals.some(r => r.StatusX === "เบิกทดแทน")) newStatusCall = "เบิกทดแทน";
+                    else if (allOtherPlant) newStatusCall = "ดึงจากคลังอื่น";
+                    else if (evals.some(r => r.StatusX === "รอของเข้า" || r.StatusX === "ดึงจากคลังอื่น")) newStatusCall = "รอของเข้า";
+                    else if (evals.some(r => r.StatusX === "เบิกนวนคร" || r.StatusX === "เบิกวิภาวดี")) newStatusCall = "เบิกศูนย์อะไหล่";
+                    else if (evals.some(r => r.StatusX === "ระหว่างขนส่ง")) newStatusCall = "ระหว่างขนส่ง";
                     else if (ticketRows.some(r => r.StatusX === "แจ้งCodeผิด")) newStatusCall = "แจ้งCodeผิด";
-
-                    if (newStatusCall === "รอของเข้า" || newStatusCall === "ดึงจากคลังอื่น") {
-                        const allOtherPlant = validRows.every(r => {
-                            const op = r["OtherPlant"];
-                            return r.StatusX === "ดึงจากคลังอื่น" || (op !== undefined && op !== null && op !== "" && op !== "-" && op !== 0 && op !== "0");
-                        });
-
-                        if (allOtherPlant && validRows.length > 0) {
-                            newStatusCall = "ดึงจากคลังอื่น";
-                        }
-                    }
-                    if (newStatusCall === "รอของเข้า" || newStatusCall === "ดึงจากคลังอื่น") {
-                        if (validRows.some(r => r.StatusX === "เกินLeadtime")) {
-                            newStatusCall = "เกินLeadtime";
-                        }
-                    }
                 }
 
                 // Apply the re-evaluated group status to all rows of this ticket
