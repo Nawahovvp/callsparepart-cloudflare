@@ -409,9 +409,8 @@ function App() {
     } else {
       updateRowLocally(ticket, material, { StatusX: newStatus, StatusCall: newStatus, _highlight: 'update', _highlightKey: Date.now() });
     }
-    // Immediate background refresh + delayed re-fetch to ensure GAS has processed the write
-    refreshDataBackground();
-    setTimeout(() => refreshDataBackground(), 5000);
+    // Delayed fresh background re-fetch after GAS has processed the write
+    setTimeout(() => refreshDataBackground(true), 4000);
   };
 
   // After project save, refresh data optimistically
@@ -424,9 +423,8 @@ function App() {
     } else {
       updateRowLocally(ticket, null, { StatusCall: statusCall, Answer1: project, _highlight: 'update', _highlightKey: Date.now() });
     }
-    // Immediate background refresh + delayed re-fetch to ensure GAS has processed the write
-    refreshDataBackground();
-    setTimeout(() => refreshDataBackground(), 5000);
+    // Delayed fresh background re-fetch after GAS has processed the write
+    setTimeout(() => refreshDataBackground(true), 4000);
   };
 
   // Simple routing logic

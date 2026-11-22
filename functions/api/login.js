@@ -1,6 +1,7 @@
 import { jsonResponse, readJsonBody } from '../_shared.js';
 
 const EMPLOYEE_URL = 'https://opensheet.elk.sh/1eqVoLsZxGguEbRCC5rdI4iMVtQ7CK4T3uXRdx8zE3uw/EmployeeWeb';
+const DEFAULT_LOGIN_LOG_URL = 'https://script.google.com/macros/s/AKfycbyx8Y6S7iYw95BBd8nHSJArEU_o25mSb7QuF7pxdInbGZOIkDaiQLiaBwHFkHiILQPg/exec';
 
 export async function onRequestPost({ request, env, waitUntil }) {
     const parsed = await readJsonBody(request);
@@ -38,7 +39,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
         return jsonResponse({ error: 'ไม่พบข้อมูลพนักงานนี้' }, 401);
     }
 
-    const logUrl = env.LOGIN_LOG_URL;
+    const logUrl = env?.LOGIN_LOG_URL || DEFAULT_LOGIN_LOG_URL;
     if (logUrl) {
         waitUntil((async () => {
             try {

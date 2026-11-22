@@ -166,18 +166,24 @@ export function useAppData() {
                     const quickResult = await fetchQuickData({ fresh: forceFresh });
                     if (fetchGeneration.current !== generation) return;
                     if (quickResult?.mainData?.length) {
-                        latestQuick = quickResult;
                         applyData(quickResult, false, true);
+                        const effectiveMainData = fullDataRef.current?.mainData || quickResult.mainData;
+                        const effectiveDateUpdateData = fullDataRef.current?.dateUpdateData || quickResult.dateUpdateData;
+                        latestQuick = {
+                            ...quickResult,
+                            mainData: effectiveMainData,
+                            dateUpdateData: effectiveDateUpdateData
+                        };
                         // Save quickData and individual caches immediately so fresh data is persisted
                         void saveToCache('quickData', {
-                            mainData: quickResult.mainData,
-                            dateUpdateData: quickResult.dateUpdateData,
+                            mainData: effectiveMainData,
+                            dateUpdateData: effectiveDateUpdateData,
                             requestData: quickResult.requestData,
                             vipaData: quickResult.vipaData,
                             nawaData: quickResult.nawaData
                         });
-                        void saveToCache('mainData', quickResult.mainData);
-                        if (quickResult.dateUpdateData?.length) void saveToCache('dateUpdateData', quickResult.dateUpdateData);
+                        void saveToCache('mainData', effectiveMainData);
+                        if (effectiveDateUpdateData?.length) void saveToCache('dateUpdateData', effectiveDateUpdateData);
                         if (quickResult.requestData?.length) void saveToCache('requestData', quickResult.requestData);
                         if (quickResult.vipaData?.length) void saveToCache('vipaData', quickResult.vipaData);
                         if (quickResult.nawaData?.length) void saveToCache('nawaData', quickResult.nawaData);
@@ -404,6 +410,45 @@ export function useAppData() {
 
     // Optimistic update for DOM re-render without full fetch
     const updateRowLocally = useCallback((ticketNumber, material, updates) => {
+        if (fullDataRef.current) {
+            const normTick = String(ticketNumber || "").replace(/^'/, '').trim();
+            const nowIso = new Date().toISOString();
+            if (material) {
+                const normMat = String(material || "").replace(/^'/, '').trim();
+                const prevNewPart = Array.isArray(fullDataRef.current.newPartData) ? fullDataRef.current.newPartData : [];
+                const filteredNewPart = prevNewPart.filter(p => {
+                    const tNum = String(p?.["Ticket Number"] || "").replace(/^'/, '').trim();
+                    const mat = String(p?.["Material"] || "").replace(/^'/, '').trim();
+                    return !(tNum === normTick && mat === normMat);
+                });
+                if (updates._highlight !== 'delete' && updates.StatusX) {
+                    filteredNewPart.push({
+                        "Ticket Number": normTick,
+                        "Material": normMat,
+                        "Status": updates.StatusX,
+                        "StatusCall": updates.StatusX,
+                        "Timestamp": nowIso
+                    });
+                }
+                fullDataRef.current = { ...fullDataRef.current, newPartData: filteredNewPart };
+            } else {
+                const prevProject = Array.isArray(fullDataRef.current.projectData) ? fullDataRef.current.projectData : [];
+                const filteredProject = prevProject.filter(p => {
+                    const tNum = String(p?.["Ticket Number"] || "").replace(/^'/, '').trim();
+                    return tNum !== normTick;
+                });
+                if (updates._highlight !== 'delete' && updates.StatusCall) {
+                    filteredProject.push({
+                        "Ticket Number": normTick,
+                        "StatusCall": updates.StatusCall,
+                        "Project": updates.Answer1 && updates.Answer1 !== "-" ? updates.Answer1 : "",
+                        "Timestamp": nowIso
+                    });
+                }
+                fullDataRef.current = { ...fullDataRef.current, projectData: filteredProject };
+            }
+        }
+
         setProcessedData(prevData => {
             let newData = prevData.map(row => {
                 const tickRow = String(row["Ticket Number"] || "").replace(/^'/, '').trim();
@@ -489,7 +534,7 @@ export function useAppData() {
         deptGroupFilter, setDeptGroupFilter,
         applyDashboardFilter,
         refreshData: () => fetchData(true, true, true),
-        refreshDataBackground: () => fetchData(false),
+        refreshDataBackground: (forceFresh = false) => fetchData(false, forceFresh),
         updateRowLocally,
         handleOutsideRequest: async (payload) => {
             const { material, quantity, plant } = payload;
