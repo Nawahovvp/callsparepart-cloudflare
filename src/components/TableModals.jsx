@@ -919,7 +919,7 @@ export function TimelineModal({ isOpen, onClose, row }) {
     }
 
     return (
-        <div className="modal" style={{ zIndex: 1100 }}>
+        <div className="modal timeline-modal" style={{ zIndex: 1100 }}>
             <div className="premium-modal-content" style={{ maxWidth: '1100px' }}>
                 <div className="premium-modal-header">
                     <h3><i className="fas fa-history" style={{ marginRight: 10 }}></i> รายละเอียดและประวัติ Timeline</h3>
@@ -931,8 +931,8 @@ export function TimelineModal({ isOpen, onClose, row }) {
                     <div className="quick-info-grid">
                         <div className="info-card highlight">
                             <span className="info-card-label">Ticket Information</span>
-                            <div className="info-card-value" style={{ fontSize: '16px', color: 'var(--info-color)' }}>{row["Ticket Number"] || "-"}</div>
-                            <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                            <div className="info-card-value timeline-ticket-val" style={{ fontSize: '16px', color: 'var(--info-color)' }}>{row["Ticket Number"] || "-"}</div>
+                            <div className="info-card-sub" style={{ fontSize: '12px', marginTop: '4px' }}>
                                 <span style={{ color: 'var(--text-secondary)' }}>วันที่แจ้ง:</span> {extractDate(row["DateTime"] || "-")}
                             </div>
                         </div>
@@ -960,13 +960,13 @@ export function TimelineModal({ isOpen, onClose, row }) {
                         <div className="info-card">
                             <span className="info-card-label">Parts & Asset</span>
                             <div className="info-card-value">{row["Material"] || "-"}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>{getDesc(row) || "-"}</div>
+                            <div className="info-card-sub" style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>{getDesc(row) || "-"}</div>
                         </div>
 
                         <div className="info-card warning">
                             <span className="info-card-label">Location & Team</span>
                             <div className="info-card-value">{getCleanTeamPlant(row["TeamPlant"]) || "-"}</div>
-                            <div style={{ fontSize: '13px', marginTop: '5px' }}>
+                            <div className="info-card-sub" style={{ fontSize: '13px', marginTop: '5px' }}>
                                 <span style={{ color: 'var(--text-secondary)' }}>Team:</span> {row["Team"] || "-"}
                             </div>
                         </div>
@@ -974,44 +974,44 @@ export function TimelineModal({ isOpen, onClose, row }) {
                         <div className="info-card success">
                             <span className="info-card-label">Current Status</span>
                             <div className="info-card-value" style={{ fontSize: '15px', color: 'var(--success-color)' }}>{row["StatusCall"] || "-"}</div>
-                            <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                            <div className="info-card-sub" style={{ fontSize: '12px', marginTop: '4px' }}>
                                 <span style={{ color: 'var(--text-secondary)' }}>ค้างหน่วยงาน:</span> {row["ค้างหน่วยงาน"] || "-"}
                             </div>
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', marginBottom: '20px', background: 'rgba(255,255,255,0.5)', padding: '10px', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
+                    <div className="timeline-summary-strip" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', marginBottom: '20px', background: 'rgba(255,255,255,0.5)', padding: '10px', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>ผ่านมา</div>
-                            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{formatElapsedDuration(row["DayRepair"])}</div>
+                            <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>ผ่านมา</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{formatElapsedDuration(row["DayRepair"])}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Brand</div>
-                            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Brand"] || "-"}</div>
+                            <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Brand</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Brand"] || "-"}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Call Type</div>
-                            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Call Type"] || "-"}</div>
+                            <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Call Type</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Call Type"] || "-"}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>นวนคร</div>
-                            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Nawa"] || "-"}</div>
+                            <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>นวนคร</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Nawa"] || "-"}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>วิภาวดี</div>
-                            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Vipa"] || "-"}</div>
+                            <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>วิภาวดี</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Vipa"] || "-"}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>คลังพื้นที่</div>
-                            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["QtyPlant"] || "-"}</div>
+                            <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>คลังพื้นที่</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["QtyPlant"] || "-"}</div>
                         </div>
                     </div>
 
-                    <h4 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
+                    <h4 className="timeline-section-title" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
                         <i className="fas fa-stream"></i> ประวัติ Timeline
                     </h4>
 
-                    <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '10px' }}>
+                    <div className="timeline-scroll-area" style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '10px' }}>
                         <ul className="timeline-vertical">
                             {timelineRows.length === 0 ? (
                                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)', background: 'var(--card-bg)', borderRadius: '12px' }}>
@@ -1066,11 +1066,11 @@ export function TimelineModal({ isOpen, onClose, row }) {
                     </div>
                 </div>
 
-                <div style={{ padding: '15px 25px', background: '#fff', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                <div className="timeline-modal-footer" style={{ padding: '15px 25px', background: '#fff', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="timeline-footer-meta" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                         <i className="fas fa-user-edit"></i> ผู้แจ้งผลล่าสุด: <strong>{row["UserAns"] || "-"}</strong> | แจ้งเมื่อ: <strong>{row["วันที่ตอบ"] || "-"}</strong>
                     </div>
-                    <button className="action-button" onClick={onClose} style={{ padding: '8px 25px' }}>ปิดหน้าต่าง</button>
+                    <button className="action-button timeline-close-btn" onClick={onClose} style={{ padding: '8px 25px' }}>ปิดหน้าต่าง</button>
                 </div>
             </div>
         </div>

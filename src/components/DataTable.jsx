@@ -501,9 +501,11 @@ export default function DataTable({
                                                         )}
                                                         {row['UserAns'] && <span className="deck-ans-user">{row['UserAns']}</span>}
                                                     </div>
-                                                    <button type="button" className="deck-detail-btn" onClick={() => onDetailClick?.(row)}>
-                                                        รายละเอียด
-                                                    </button>
+                                                    {idx === group.items.length - 1 && (
+                                                        <button type="button" className="deck-detail-btn" onClick={() => onDetailClick?.(row)}>
+                                                            รายละเอียด
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         );

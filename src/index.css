@@ -6926,3 +6926,176 @@
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
 }
+
+/* Mobile Responsive Timeline Modal */
+@media (max-width: 768px) {
+    .timeline-modal .premium-modal-content {
+        width: 96% !important;
+        max-height: 92vh !important;
+        margin: 3vh auto !important;
+        border-radius: 12px !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .timeline-modal .premium-modal-header {
+        padding: 10px 14px !important;
+        flex-shrink: 0;
+    }
+
+    .timeline-modal .premium-modal-header h3 {
+        font-size: 14px !important;
+    }
+
+    .timeline-modal .premium-modal-close {
+        font-size: 22px !important;
+    }
+
+    .timeline-modal .premium-modal-body {
+        padding: 10px !important;
+        overflow-y: auto !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+    }
+
+    .timeline-modal .quick-info-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .timeline-modal .info-card {
+        padding: 7px 9px !important;
+        border-radius: 8px !important;
+        gap: 2px !important;
+        min-width: 0 !important;
+    }
+
+    .timeline-modal .info-card-label {
+        font-size: 9.5px !important;
+        letter-spacing: 0.2px !important;
+    }
+
+    .timeline-modal .info-card-value,
+    .timeline-modal .timeline-ticket-val {
+        font-size: 12px !important;
+        line-height: 1.25 !important;
+        word-break: break-word !important;
+    }
+
+    .timeline-modal .info-card-sub {
+        font-size: 10.5px !important;
+        margin-top: 1px !important;
+        line-height: 1.25 !important;
+    }
+
+    .timeline-modal .timeline-summary-strip {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 5px !important;
+        padding: 7px 6px !important;
+        margin-bottom: 10px !important;
+        border-radius: 8px !important;
+    }
+
+    .timeline-modal .timeline-strip-label {
+        font-size: 9px !important;
+    }
+
+    .timeline-modal .timeline-strip-val {
+        font-size: 11px !important;
+        line-height: 1.2 !important;
+    }
+
+    .timeline-modal .timeline-section-title {
+        font-size: 13px !important;
+        margin: 6px 0 8px 0 !important;
+        gap: 6px !important;
+    }
+
+    .timeline-modal .timeline-scroll-area {
+        max-height: none !important;
+        overflow-y: visible !important;
+        padding-right: 2px !important;
+    }
+
+    .timeline-modal .timeline-vertical {
+        margin: 6px 0 6px 14px !important;
+    }
+
+    .timeline-modal .timeline-vertical::before {
+        left: -10px !important;
+    }
+
+    .timeline-modal .timeline-v-item {
+        margin-bottom: 10px !important;
+    }
+
+    .timeline-modal .timeline-v-dot {
+        left: -14px !important;
+        top: 6px !important;
+        width: 9px !important;
+        height: 9px !important;
+    }
+
+    .timeline-modal .timeline-v-card {
+        padding: 8px 10px !important;
+        margin-left: 2px !important;
+        border-radius: 8px !important;
+    }
+
+    .timeline-modal .timeline-v-header {
+        margin-bottom: 6px !important;
+        padding-bottom: 5px !important;
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .timeline-modal .timeline-v-date {
+        font-size: 11.5px !important;
+    }
+
+    .timeline-modal .timeline-v-duration {
+        font-size: 10px !important;
+        padding: 1px 6px !important;
+    }
+
+    .timeline-modal .timeline-v-meta {
+        flex-wrap: wrap !important;
+        gap: 4px 10px !important;
+        margin-bottom: 6px !important;
+        font-size: 11px !important;
+    }
+
+    .timeline-modal .timeline-v-meta-item {
+        gap: 4px !important;
+    }
+
+    .timeline-modal .timeline-v-status {
+        font-size: 12px !important;
+        margin-bottom: 3px !important;
+    }
+
+    .timeline-modal .timeline-v-details {
+        font-size: 11.5px !important;
+        line-height: 1.35 !important;
+        word-break: break-word !important;
+    }
+
+    .timeline-modal .timeline-modal-footer {
+        padding: 8px 12px !important;
+        gap: 8px !important;
+        flex-shrink: 0;
+    }
+
+    .timeline-modal .timeline-footer-meta {
+        font-size: 10.5px !important;
+        line-height: 1.3 !important;
+    }
+
+    .timeline-modal .timeline-close-btn {
+        padding: 6px 14px !important;
+        font-size: 12px !important;
+        white-space: nowrap !important;
+        flex-shrink: 0;
+    }
+}
