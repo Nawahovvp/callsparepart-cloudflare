@@ -479,6 +479,8 @@ export function useAppData() {
                     else if (evals.some(r => r.StatusX === "รอของเข้า")) newStatusCall = "รอของเข้า";
                     else if (evals.some(r => r.StatusX === "เบิกนวนคร" || r.StatusX === "เบิกวิภาวดี")) newStatusCall = "เบิกศูนย์อะไหล่";
                     else if (evals.some(r => r.StatusX === "ระหว่างขนส่ง")) newStatusCall = "ระหว่างขนส่ง";
+                    else if (evals.some(r => r.StatusX === "มีอะไหล่ในทีม")) newStatusCall = "มีอะไหล่ในทีม";
+                    else if (evals.some(r => r.StatusX === "เบิกทดแทน")) newStatusCall = "เบิกทดแทน";
                     else if (ticketRows.some(r => r.StatusX === "แจ้งCodeผิด")) newStatusCall = "แจ้งCodeผิด";
 
                     if (newStatusCall === "รอของเข้า" || newStatusCall === "ดึงจากคลังอื่น") {

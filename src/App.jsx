@@ -160,11 +160,28 @@ function App() {
       if (ticket) ticketCounts.set(ticket, (ticketCounts.get(ticket) || 0) + 1);
     });
 
-    return data.filter(row => {
-      const ticket = String(row?.['Ticket Number'] || '').replace(/^'/, '').trim();
+    const isWrongCodeRow = (row) => {
+      const statusX = String(row?.StatusX || row?.StatusCall || '').trim();
       const description = String(row?.Description || '').trim();
-      return !(ticketCounts.get(ticket) > 1 && description === 'Code ผิด');
-    });
+      return statusX === 'แจ้งCodeผิด' || description === 'Code ผิด';
+    };
+
+    return data
+      .filter(row => {
+        const ticket = String(row?.['Ticket Number'] || '').replace(/^'/, '').trim();
+        return !(ticketCounts.get(ticket) > 1 && isWrongCodeRow(row));
+      })
+      .map(row => {
+        const ticket = String(row?.['Ticket Number'] || '').replace(/^'/, '').trim();
+        if ((ticketCounts.get(ticket) || 0) <= 1 && isWrongCodeRow(row)) {
+          return {
+            ...row,
+            _rawMaterial: row._rawMaterial ?? row.Material,
+            Material: ''
+          };
+        }
+        return row;
+      });
   }, [data, allData]);
 
   const sortedData = React.useMemo(() => {

@@ -587,7 +587,8 @@ export function StatusEditModal({ isOpen, onClose, row, allData, onSaved, curren
     if (!isOpen || !row) return null;
 
     const ticket = String(row["Ticket Number"] || "").replace(/^'/, '').trim();
-    const material = String(row["Material"] || "").replace(/^'/, '').trim();
+    const material = String(row._rawMaterial ?? row["Material"] ?? "").replace(/^'/, '').trim();
+    const displayMaterial = String(row["Material"] ?? "").replace(/^'/, '').trim();
 
     const handleSubmit = async (actionType) => {
         if (!ticket) return;
@@ -618,7 +619,7 @@ export function StatusEditModal({ isOpen, onClose, row, allData, onSaved, curren
                 <span className="close" onClick={onClose}>&times;</span>
                 <h3 style={{ color: 'var(--header-bg)', marginBottom: 15 }}>แก้ไขสถานะอะไหล่</h3>
                 <div style={{ marginBottom: 10 }}><strong>Ticket:</strong> {ticket}</div>
-                <div style={{ marginBottom: 15 }}><strong>Material:</strong> {material}</div>
+                <div style={{ marginBottom: 15 }}><strong>Material:</strong> {displayMaterial || material}</div>
 
                 <div style={{ marginBottom: 15 }}>
                     <label style={{ fontWeight: 'bold', display: 'block', marginBottom: 5 }}>เลือกสถานะ:</label>

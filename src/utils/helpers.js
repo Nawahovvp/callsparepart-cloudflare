@@ -866,20 +866,28 @@ export function processRawData(
 
         // Define priorities and calculate StatusCall
         const rowStatuses = rows.map(r => {
-            if (HIGH_PRIORITY_STATUSES.includes(r.StatusX)) {
-                return r.StatusX;
-            }
             const mat = normalizeMaterial(r["Material"]);
             const key = `${ticket}_${mat}`;
             const overridenStatusObj = newPartMap.get(key);
             const overridenStatus = overridenStatusObj ? overridenStatusObj.Status : null;
+            if (overridenStatus === "แจ้งCodeผิด") {
+                return overridenStatus;
+            }
+            if (HIGH_PRIORITY_STATUSES.includes(r.StatusX)) {
+                return r.StatusX;
+            }
             return overridenStatus || r.StatusX || "";
         });
 
         const validStatuses = rowStatuses.filter(s => s !== "แจ้งCodeผิด");
         const statusesToEval = validStatuses.length > 0 ? validStatuses : rowStatuses;
 
-        const hasHighPriority = rows.some(r => HIGH_PRIORITY_STATUSES.includes(r.StatusX));
+        const hasHighPriority = rows.some(r => {
+            const mat = normalizeMaterial(r["Material"]);
+            const overridenStatus = newPartMap.get(`${ticket}_${mat}`)?.Status;
+            if (overridenStatus === "แจ้งCodeผิด") return false;
+            return HIGH_PRIORITY_STATUSES.includes(r.StatusX);
+        });
 
         if (projectMap.has(ticket) && !hasHighPriority) {
             const proj = projectMap.get(ticket);
@@ -1004,8 +1012,8 @@ export function processRawData(
             // Override with custom status if it exists for this specific row (Ticket + Material)
             const mat = normalizeMaterial(r["Material"]);
             const compositeKey = `${ticket}_${mat}`;
-            if (newPartMap.has(compositeKey) && !HIGH_PRIORITY_STATUSES.includes(r.StatusX)) {
-                const customStatus = newPartMap.get(compositeKey).Status;
+            const customStatus = newPartMap.get(compositeKey)?.Status;
+            if (customStatus && (customStatus === "แจ้งCodeผิด" || !HIGH_PRIORITY_STATUSES.includes(r.StatusX))) {
                 // DO NOT override StatusCall here, as it should remain the group-level status
                 r.StatusX = customStatus;    // Override StatusX so filtering/sorting works
                 r._isManualStatusX = true;   // Flag as manual override
@@ -1052,6 +1060,7 @@ export function processRawData(
 
     // 5. Override StatusX for mismatch: ค้างหน่วยงาน = "Stock วิภาวดี 62" but ศูนย์พื้นที่ ≠ "วิภาวดี 62"
     enrichedData.forEach(r => {
+        if (r.StatusX === "แจ้งCodeผิด") return;
         const pending = (r["ค้างหน่วยงาน"] || "").trim();
         const tp = (r["TeamPlant"] || r["ศูนย์พื้นที่"] || "").replace(/Stock\s*/gi, '').trim();
         const mat = (r["Material"] || "").toString().trim();
