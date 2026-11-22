@@ -452,7 +452,7 @@ function App() {
     return (
       <Suspense fallback={null}>
         <SpareSummaryPage
-          data={data}
+          data={allData}
           rawSources={rawSources}
           isLoading={isLoading}
           onClose={() => window.close()}
@@ -865,7 +865,7 @@ function App() {
               <SpareSummaryModal
                 isOpen
                 onClose={() => setSpareSummaryOpen(false)}
-                data={data}
+                data={allData}
                 rawSources={rawSources}
                 isLoading={isLoading}
               />

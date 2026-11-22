@@ -174,14 +174,14 @@ export default function SpareSummaryPage({ data = [], rawSources = {}, isLoading
 
     const pivotData = computedData?.pivotData || {};
     const pendingUnits = computedData?.pendingUnits || [];
-    const totalQuantity = computedData?.totalQuantity || 0;
-    const topMaterial = computedData?.topMaterial || '-';
     const prgMap = computedData?.prgMap || {};
     const prMap = computedData?.prMap || {};
     const poMap = computedData?.poMap || {};
     const poDetailMap = computedData?.poDetailMap || {};
     const nawaMap = computedData?.nawaMap || {};
     const prgOptions = computedData?.prgOptions || [];
+    const totalQuantity = displayRows.reduce((sum, matDesc) => sum + (pivotData[matDesc]?.total || 0), 0);
+    const topMaterial = displayRows.length > 0 ? displayRows[0].replace('|', ' - ') : '-';
 
     const exportCSV = () => {
         if (!computedData || displayRows.length === 0) return;

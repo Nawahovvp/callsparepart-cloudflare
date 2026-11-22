@@ -676,7 +676,9 @@ export function SpareSummaryModal({ isOpen, onClose, data = [], rawSources = {},
         </div>
     );
 
-    const { pivotData, pendingUnits, totalQuantity, topMaterial, prgMap, prMap, poMap, poDetailMap, nawaMap, prgOptions } = computedData;
+    const { pivotData, pendingUnits, prgMap, prMap, poMap, poDetailMap, nawaMap, prgOptions } = computedData;
+    const totalQuantity = displayRows.reduce((sum, matDesc) => sum + (pivotData[matDesc]?.total || 0), 0);
+    const topMaterial = displayRows.length > 0 ? displayRows[0].replace('|', ' - ') : '-';
 
     const exportCSV = () => {
         const rows = [['Material', 'Description', 'PRG', 'PR', 'PO', 'กำหนดส่ง', 'PO Document', 'Supplier', 'จำนวนส่ง', 'นวนคร', 'รวม', ...pendingUnits]];

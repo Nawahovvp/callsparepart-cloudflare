@@ -23,11 +23,12 @@ export function computeSpareSummaryData(data, rawSources) {
         });
     }
 
-    const EXCLUDE_STATUS = new Set(["ระหว่างขนส่ง", "เบิกนวนคร", "ขอซื้อขอซ่อม"]);
+    const EXCLUDE_STATUS = new Set(["ระหว่างขนส่ง", "ขอซื้อขอซ่อม", "แจ้งCodeผิด"]);
     const filteredRows = data.filter(row => {
         const sx = (row["StatusX"] || row["StatusCall"] || "").trim();
-        const mat = (row["Material"] || "").trim();
-        return !EXCLUDE_STATUS.has(sx) && mat !== "";
+        const mat = normalizeMaterial(row["Material"]);
+        const desc = String(row["Description"] || "").trim();
+        return !EXCLUDE_STATUS.has(sx) && desc !== "Code ผิด" && mat !== "" && mat !== "-";
     });
     if (filteredRows.length === 0) return null;
 
@@ -39,10 +40,22 @@ export function computeSpareSummaryData(data, rawSources) {
     });
     const pendingUnits = [...pendingUnitsSet].sort();
 
+    // Group by normalized Material so rows with the same Material are never split by description differences
+    const descByMaterial = new Map();
+    filteredRows.forEach(row => {
+        const mat = normalizeMaterial(row["Material"]);
+        const desc = getDesc(row);
+        if (mat && desc && !descByMaterial.has(mat)) {
+            descByMaterial.set(mat, desc);
+        }
+    });
+
     const pivotData = {};
     let totalQuantity = 0;
     filteredRows.forEach(row => {
-        const matDesc = row["Material"] + '|' + getDesc(row);
+        const mat = normalizeMaterial(row["Material"]);
+        const desc = descByMaterial.get(mat) || getDesc(row) || "";
+        const matDesc = `${mat}|${desc}`;
         const rawPending = (row["ค้างหน่วยงาน"] || "ไม่ระบุ").trim();
         const pending = rawPending.replace(/^Stock\s+/gi, '').trim() || rawPending;
         if (!pivotData[matDesc]) {
@@ -50,9 +63,10 @@ export function computeSpareSummaryData(data, rawSources) {
             pendingUnits.forEach(u => pivotData[matDesc][u] = 0);
         }
         if (pending) {
-            pivotData[matDesc].total++;
-            pivotData[matDesc][pending]++;
-            totalQuantity++;
+            const qty = parseFloat(String(row["จำนวน"] || "1").replace(/,/g, '')) || 1;
+            pivotData[matDesc].total += qty;
+            pivotData[matDesc][pending] += qty;
+            totalQuantity += qty;
         }
     });
 
