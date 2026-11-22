@@ -476,6 +476,7 @@ export function useAppData() {
 
                     if (evals.some(r => r.StatusX === "เปิดรหัสใหม่")) newStatusCall = "เปิดรหัสใหม่";
                     else if (evals.some(r => r.StatusX === "ขอซื้อขอซ่อม")) newStatusCall = "ขอซื้อขอซ่อม";
+                    else if (evals.some(r => r.StatusX === "เกินLeadtime")) newStatusCall = "เกินLeadtime";
                     else if (evals.some(r => r.StatusX === "รอของเข้า")) newStatusCall = "รอของเข้า";
                     else if (evals.some(r => r.StatusX === "เบิกนวนคร" || r.StatusX === "เบิกวิภาวดี")) newStatusCall = "เบิกศูนย์อะไหล่";
                     else if (evals.some(r => r.StatusX === "ระหว่างขนส่ง")) newStatusCall = "ระหว่างขนส่ง";

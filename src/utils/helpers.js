@@ -278,6 +278,30 @@ function computePoQuantities(data) {
     return result;
 }
 
+function computeOverduePoMaterials(data) {
+    const overdueSet = new Set();
+    if (!Array.isArray(data)) return overdueSet;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    data.forEach(poRow => {
+        const poMat = normalizeMaterial(poRow["Material"] || "");
+        if (!poMat || overdueSet.has(poMat)) return;
+        const qty = parseFloat((poRow["Still to be delivered (qty)"] + "").replace(/,/g, ''));
+        if (isNaN(qty) || qty <= 0) return;
+
+        const dateStr = poRow["Document Date"] || poRow["Date"] || poRow["Delivery Date"] || poRow["Deliv.Date"] || "-";
+        const d = parseDateString(dateStr);
+        if (d && d instanceof Date && !isNaN(d)) {
+            d.setHours(0, 0, 0, 0);
+            if (d < today) {
+                overdueSet.add(poMat);
+            }
+        }
+    });
+    return overdueSet;
+}
+
 function computeStockQuantities(data) {
     const result = {};
     if (!Array.isArray(data)) return result;
@@ -575,6 +599,7 @@ export function processRawData(
     const { byMaterial: reqQ, byPlant: reqByPlant } = computeRequestQuantities(requestData);
     const prQ = computePrQuantities(prData);
     const poQ = computePoQuantities(poData);
+    const overduePoMaterials = computeOverduePoMaterials(poData);
     const vipaStock = computeStockQuantities(vipaData);
     const nawaStock = computeStockQuantities(nawaData);
     const { byPlant: plantStock, byMaterial: otherPlantStock } = computePlantStockQuantities(plantStockData);
@@ -814,6 +839,8 @@ export function processRawData(
                 const hasNawa = r["Nawa"] && r["Nawa"] !== "" && r["Nawa"] !== "0";
                 if (hasNawa) {
                     r.TempStatusX = "เบิกนวนคร";
+                } else if (overduePoMaterials.has(mat)) {
+                    r.TempStatusX = "เกินLeadtime";
                 } else {
                     const hasVipa = r["Vipa"] && r["Vipa"] !== "" && r["Vipa"] !== "0";
                     if (hasVipa) {
@@ -905,6 +932,8 @@ export function processRawData(
             statusCall = "เปิดรหัสใหม่";
         } else if (statusesToEval.includes("ขอซื้อขอซ่อม")) {
             statusCall = "ขอซื้อขอซ่อม";
+        } else if (statusesToEval.includes("เกินLeadtime")) {
+            statusCall = "เกินLeadtime";
         } else if (statusesToEval.includes("รอของเข้า")) {
             statusCall = "รอของเข้า";
         } else if (statusesToEval.some(s => s === "เบิกนวนคร" || s === "เบิกวิภาวดี")) {
