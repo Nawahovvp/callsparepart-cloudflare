@@ -282,7 +282,7 @@ export function useAppData(isLoggedIn = true) {
             if (searchTerm) {
                 const keyword = searchTerm.toLowerCase().trim();
                 const fields = [
-                    row["DayRepair"], row["DateTime"], row["Ticket Number"],
+                    row["DayRepair"], row["DateTime"], row["Company"], row["Ticket Number"],
                     row["Brand"], row["Equipment"], row["Call Type"], row["Team"],
                     cleanTP, row["ค้างหน่วยงาน"], row["Material"],
                     row["Description"], row["Nawa"], row["Vipa"],

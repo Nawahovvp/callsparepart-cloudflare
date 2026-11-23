@@ -4189,6 +4189,22 @@
       max-height: none !important;
     }
 
+    table#data-table td[data-column="Company"],
+    table#data-table td[data-column="Company"].merged-ticket-cell {
+      text-align: center !important;
+    }
+
+    .cus-logo-img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      border-radius: 5px;
+      vertical-align: middle;
+      display: inline-block;
+      background: #ffffff;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+    }
+
     table#data-table td[data-column="Brand"],
     table#data-table td[data-column="Brand"].merged-ticket-cell,
     table#data-table td[data-column="Ticket Number"],

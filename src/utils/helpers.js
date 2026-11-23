@@ -95,6 +95,7 @@ export const TABLE_COLUMNS = [
     { key: 'StatusGroup', label: 'StatusCall' },
     { key: 'DayRepair', label: 'ผ่านมา' },
     { key: 'DateTime', label: 'วันที่แจ้ง' },
+    { key: 'Company', label: 'Cus' },
     { key: 'Brand', label: 'Store Name' },
     { key: 'Equipment', label: 'Equipment' },
     { key: 'Call Type', label: 'Call Type' },

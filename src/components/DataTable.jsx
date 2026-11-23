@@ -1,5 +1,6 @@
 import React from 'react';
 import { TABLE_COLUMNS, formatStockAnswerLabel } from '../utils/helpers';
+import { getCusLogo } from '../utils/cusLogos';
 
 const HIDDEN_COLUMN_KEYS = new Set(['StockStartDate', 'Answer1', 'IDPlant', 'Equipment']);
 const COLUMNS = TABLE_COLUMNS.filter(({ key }) => !HIDDEN_COLUMN_KEYS.has(key));
@@ -8,6 +9,7 @@ const MERGEABLE_COLUMNS = {
     StatusGroup: (row) => `${row['StatusCall'] ?? ''}__${row._isManualStatusCall ? '1' : '0'}`,
     DayRepair: (row) => (!isNaN(parseFloat(row['DayRepair'])) ? String(Math.floor(parseFloat(row['DayRepair']))) : '-'),
     DateTime: (row) => String(extractDate(row['DateTime']) ?? ''),
+    Company: (row) => String(row['Company'] ?? '').trim(),
     Brand: (row) => String(row['Brand'] ?? '').trim(),
     'Call Type': (row) => String(row['Call Type'] ?? '').trim(),
     Team: (row) => String(row['Team'] ?? '').trim(),
@@ -220,6 +222,30 @@ export default function DataTable({
                                         {spans['DateTime'] > 0 && (
                                             <td data-column="DateTime" {...mergedProps('DateTime')}>{extractDate(row['DateTime'])}</td>
                                         )}
+                                        {spans['Company'] > 0 && (() => {
+                                            const companyName = String(row['Company'] || '').trim();
+                                            const cusLogo = getCusLogo(companyName);
+                                            return (
+                                                <td
+                                                    data-column="Company"
+                                                    {...mergedProps('Company')}
+                                                    title={companyName || undefined}
+                                                    style={{ textAlign: 'center' }}
+                                                >
+                                                    {cusLogo ? (
+                                                        <img
+                                                            src={cusLogo.logo}
+                                                            alt={companyName}
+                                                            title={companyName}
+                                                            className="cus-logo-img"
+                                                            loading="lazy"
+                                                        />
+                                                    ) : (
+                                                        companyName || '-'
+                                                    )}
+                                                </td>
+                                            );
+                                        })()}
                                         {spans['Brand'] > 0 && (
                                             <td data-column="Brand" {...mergedProps('Brand')}>{row['Brand']}</td>
                                         )}
