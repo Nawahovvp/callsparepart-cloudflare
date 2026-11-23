@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { formatStockAnswerLabel } from '../utils/helpers';
+import { getCusLogo } from '../utils/cusLogos';
 
 const STATUS_COLORS = {
     "รอของเข้า": "var(--danger-color)",
@@ -100,6 +101,80 @@ function DrawerFilterGroup({ title, icon, options, activeValue, onSelect, useSta
     );
 }
 
+function DrawerCustomerGroup({ options, activeValue, onSelect, defaultOpen = true }) {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+    const sorted = Object.entries(options || {}).sort((a, b) => b[1] - a[1]);
+    const totalCalls = sorted.reduce((sum, [, count]) => sum + count, 0);
+    const activeShortName = activeValue ? (getCusLogo(activeValue)?.shortName || activeValue) : '';
+
+    return (
+        <div className="drawer-accordion">
+            <button
+                type="button"
+                className="drawer-accordion-header"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <span className="drawer-accordion-title">
+                    <i className="fas fa-store"></i>
+                    <span>ลูกค้า</span>
+                    {activeValue && <span className="drawer-active-dot" title={`กำลังเลือก: ${activeValue}`}></span>}
+                </span>
+                <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'} drawer-accordion-arrow`}></i>
+            </button>
+
+            {isOpen && (
+                <div className="drawer-accordion-body">
+                    {activeValue && (
+                        <button
+                            type="button"
+                            className="drawer-clear-section"
+                            onClick={() => onSelect('')}
+                        >
+                            <i className="fas fa-times-circle"></i> ล้างตัวกรอง "{activeShortName}"
+                        </button>
+                    )}
+                    <div className="drawer-cus-chips">
+                        <button
+                            type="button"
+                            className={`quick-unit-chip drawer-cus-chip ${!activeValue ? 'active' : ''}`}
+                            onClick={() => onSelect('')}
+                        >
+                            <span>ทั้งหมด</span>
+                            <span className="quick-unit-count">{totalCalls}</span>
+                        </button>
+                        {sorted.map(([key, count]) => {
+                            const isActive = activeValue === key;
+                            const cusLogo = getCusLogo(key);
+                            return (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    className={`quick-unit-chip drawer-cus-chip ${isActive ? 'active' : ''}`}
+                                    onClick={() => onSelect(isActive ? '' : key)}
+                                    title={`${key} (${count} Call)`}
+                                    aria-label={`${key} (${count} Call)`}
+                                >
+                                    {cusLogo ? (
+                                        <img
+                                            src={cusLogo.logo}
+                                            alt={key}
+                                            className="drawer-cus-logo"
+                                            loading="lazy"
+                                        />
+                                    ) : (
+                                        <span className="drawer-cus-fallback">{key}</span>
+                                    )}
+                                    <span className="quick-unit-count">{count}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function RightMenuBar({
     activeTab,
     onTabChange,
@@ -108,11 +183,13 @@ export default function RightMenuBar({
     teamPlantFilter,
     pendingUnitFilter,
     stockAnswerFilter,
+    companyFilter,
     callTypeStats = [],
     dashboardFilter = null,
     onTeamPlantChange,
     onPendingUnitChange,
     onStockAnswerChange,
+    onCompanyChange,
     onCallTypeClick,
     onClearAllFilters,
     activeFilterCount = 0,
@@ -197,6 +274,12 @@ export default function RightMenuBar({
                                 <i className="fas fa-undo-alt"></i> ล้างตัวกรองทั้งหมด ({activeFilterCount})
                             </button>
                         )}
+                        <DrawerCustomerGroup
+                            options={availableFilters?.company}
+                            activeValue={companyFilter}
+                            onSelect={onCompanyChange}
+                            defaultOpen={true}
+                        />
                         <DrawerFilterGroup
                             title="ศูนย์พื้นที่"
                             icon="fas fa-building"

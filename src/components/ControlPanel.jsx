@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatStockAnswerLabel } from '../utils/helpers';
+import { getCusLogo } from '../utils/cusLogos';
 
 export default function ControlPanel({
     searchTerm,
@@ -9,11 +10,13 @@ export default function ControlPanel({
     pendingUnitFilter,
     stockAnswerFilter,
     statusCallFilter,
+    companyFilter,
     dashboardFilter,
     gmFilter,
     onTeamPlantChange,
     onPendingUnitChange,
     onStockAnswerChange,
+    onCompanyChange,
     onClearAllFilters,
     onOpenFilters,
     totalCount = 0,
@@ -24,6 +27,7 @@ export default function ControlPanel({
     userPendingUnit = ''
 }) {
     const activeChips = [];
+    if (companyFilter) activeChips.push({ key: 'cus', label: `ลูกค้า: ${getCusLogo(companyFilter)?.shortName || companyFilter}`, onClear: () => onCompanyChange?.('') });
     if (teamPlantFilter) activeChips.push({ key: 'tp', label: `ศูนย์พื้นที่: ${teamPlantFilter}`, onClear: () => onTeamPlantChange('') });
     if (stockAnswerFilter) activeChips.push({ key: 'sa', label: `คลังตอบ: ${formatStockAnswerLabel(stockAnswerFilter)}`, onClear: () => onStockAnswerChange('') });
     if (statusCallFilter) activeChips.push({ key: 'sc', label: `StatusCall: ${statusCallFilter}`, onClear: onClearAllFilters });

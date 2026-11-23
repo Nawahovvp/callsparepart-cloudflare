@@ -115,6 +115,7 @@ function App() {
     pendingUnitFilter, setPendingUnitFilter,
     stockAnswerFilter, setStockAnswerFilter,
     statusCallFilter, setStatusCallFilter,
+    companyFilter, setCompanyFilter,
     searchTerm, setSearchTerm,
     dashboardFilter, setDashboardFilter,
     gmFilter, setGmFilter,
@@ -291,6 +292,7 @@ function App() {
     teamPlantFilter,
     stockAnswerFilter,
     statusCallFilter,
+    companyFilter,
     dashboardFilter,
     gmFilter
   ].filter(Boolean).length;
@@ -347,6 +349,7 @@ function App() {
       setPendingUnitFilter('');
       setStockAnswerFilter('');
       setStatusCallFilter('');
+      setCompanyFilter('');
       setSearchTerm('');
       return;
     }
@@ -752,11 +755,13 @@ function App() {
                     pendingUnitFilter={pendingUnitFilter}
                     stockAnswerFilter={stockAnswerFilter}
                     statusCallFilter={statusCallFilter}
+                    companyFilter={companyFilter}
                     dashboardFilter={dashboardFilter}
                     gmFilter={gmFilter}
                     onTeamPlantChange={(v) => { setTeamPlantFilter(v); setCurrentPage(1); }}
                     onPendingUnitChange={(v) => { setPendingUnitFilter(v); setCurrentPage(1); }}
                     onStockAnswerChange={(v) => { setStockAnswerFilter(v); setCurrentPage(1); }}
+                    onCompanyChange={(v) => { setCompanyFilter(v); setCurrentPage(1); }}
                     onClearAllFilters={() => handleDashboardClick('total')}
                     onOpenFilters={() => setRightDrawerTab(prev => prev === 'filters' ? null : 'filters')}
                     totalCount={sortedData.length}
@@ -803,11 +808,13 @@ function App() {
                 teamPlantFilter={teamPlantFilter}
                 pendingUnitFilter={pendingUnitFilter}
                 stockAnswerFilter={stockAnswerFilter}
+                companyFilter={companyFilter}
                 callTypeStats={summary.callTypeStats}
                 dashboardFilter={dashboardFilter}
                 onTeamPlantChange={(v) => { setTeamPlantFilter(v); setCurrentPage(1); }}
                 onPendingUnitChange={(v) => { setPendingUnitFilter(v); setCurrentPage(1); }}
                 onStockAnswerChange={(v) => { setStockAnswerFilter(v); setCurrentPage(1); }}
+                onCompanyChange={(v) => { setCompanyFilter(v); setCurrentPage(1); }}
                 onCallTypeClick={handleDashboardClick}
                 onClearAllFilters={() => handleDashboardClick('total')}
                 activeFilterCount={activeFilterCount}

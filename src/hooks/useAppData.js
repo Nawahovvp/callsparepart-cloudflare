@@ -17,6 +17,7 @@ export function useAppData(isLoggedIn = true) {
     const [pendingUnitFilter, setPendingUnitFilter] = useState('');
     const [stockAnswerFilter, setStockAnswerFilter] = useState('');
     const [statusCallFilter, setStatusCallFilter] = useState('');
+    const [companyFilter, setCompanyFilter] = useState('');
     const [gmFilter, setGmFilter] = useState(null); // New state for hierarchical filtering
     const [deptGroupFilter, setDeptGroupFilter] = useState(() => {
         const saved = localStorage.getItem('showAllCards');
@@ -277,6 +278,8 @@ export function useAppData(isLoggedIn = true) {
             if (excludeType !== 'stock' && stockAnswerFilter && (row["คลังตอบ"] || "") !== stockAnswerFilter) return false;
             // StatusCall filter (uses StatusX = row-level status, matching original)
             if (excludeType !== 'status' && statusCallFilter && (row.StatusX || "") !== statusCallFilter) return false;
+            // Company (Cus) filter
+            if (excludeType !== 'company' && companyFilter && String(row["Company"] || "").trim() !== companyFilter) return false;
 
             // Search term
             if (searchTerm) {
@@ -299,7 +302,7 @@ export function useAppData(isLoggedIn = true) {
 
             return true;
         });
-    }, [processedData, teamPlantFilter, pendingUnitFilter, stockAnswerFilter, statusCallFilter, searchTerm, gmFilter, deptGroupFilter]);
+    }, [processedData, teamPlantFilter, pendingUnitFilter, stockAnswerFilter, statusCallFilter, companyFilter, searchTerm, gmFilter, deptGroupFilter]);
 
     // Apply dashboard card filter (matching original applyDashboardFilter)
     const applyDashboardFilter = useCallback((data, filter) => {
@@ -362,6 +365,7 @@ export function useAppData(isLoggedIn = true) {
     const pendingFilterData = useMemo(() => applyDashboardFilter(getFilteredData('pending'), dashboardFilter), [getFilteredData, dashboardFilter, applyDashboardFilter]);
     const stockFilterData = useMemo(() => applyDashboardFilter(getFilteredData('stock'), dashboardFilter), [getFilteredData, dashboardFilter, applyDashboardFilter]);
     const statusFilterData = useMemo(() => applyDashboardFilter(getFilteredData('status'), dashboardFilter), [getFilteredData, dashboardFilter, applyDashboardFilter]);
+    const companyFilterData = useMemo(() => applyDashboardFilter(getFilteredData('company'), dashboardFilter), [getFilteredData, dashboardFilter, applyDashboardFilter]);
 
     // Compute filter options with ticket counts (matching original)
     const computeFilterOptions = useCallback((data, field, transform) => {
@@ -411,8 +415,9 @@ export function useAppData(isLoggedIn = true) {
         pendingUnitHasWaiting: getPendingUnitWaitingStatus(pendingFilterData),
         pendingUnitAllDone: getPendingUnitAllDoneStatus(pendingFilterData),
         stockAnswer: computeFilterOptions(stockFilterData, "คลังตอบ"),
-        statusCall: computeFilterOptions(statusFilterData, null, (row) => row.StatusX || "")
-    }), [teamPlantFilterData, pendingFilterData, stockFilterData, statusFilterData, computeFilterOptions, getPendingUnitWaitingStatus, getPendingUnitAllDoneStatus]);
+        statusCall: computeFilterOptions(statusFilterData, null, (row) => row.StatusX || ""),
+        company: computeFilterOptions(companyFilterData, null, (row) => String(row["Company"] || "").trim())
+    }), [teamPlantFilterData, pendingFilterData, stockFilterData, statusFilterData, companyFilterData, computeFilterOptions, getPendingUnitWaitingStatus, getPendingUnitAllDoneStatus]);
 
     // Optimistic update for DOM re-render without full fetch
     const updateRowLocally = useCallback((ticketNumber, material, updates) => {
@@ -526,6 +531,7 @@ export function useAppData(isLoggedIn = true) {
         pendingUnitFilter, setPendingUnitFilter,
         stockAnswerFilter, setStockAnswerFilter,
         statusCallFilter, setStatusCallFilter,
+        companyFilter, setCompanyFilter,
         searchTerm, setSearchTerm,
         dashboardFilter, setDashboardFilter,
         gmFilter, setGmFilter,
