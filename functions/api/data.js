@@ -1,4 +1,4 @@
-import { jsonResponse } from '../_shared.js';
+import { jsonResponse, requireApiAccess } from '../_shared.js';
 
 const SOURCES = [
     ['mainData', 'https://opensheet.elk.sh/112KOJI227dvyHy4w_gD8wuANrVPmFK_ezzZyV_uWVrE/CallMaterial'],
@@ -243,34 +243,43 @@ async function fetchAllSources(nawaBackupUrl, fresh = false) {
         failedSources: failures
     };
 
-    return jsonResponse(responseData, 200, fresh
-        ? { 'Cache-Control': 'no-store' }
-        : { 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' });
+    return jsonResponse(responseData, 200, {
+        'Cache-Control': 'private, no-store',
+        'Vary': 'Cookie, X-Requested-With'
+    });
 }
 
 export async function onRequestGet({ request, waitUntil, env }) {
+    const access = await requireApiAccess(request, env);
+    if (access.error) return access.error;
+
     const fresh = new URL(request.url).searchParams.get('fresh') === '1';
     const cacheKey = new Request(new URL('/api/data', request.url).toString());
     if (!fresh) {
         const cached = await getEdgeCache(cacheKey);
-        if (cached) return cached;
+        if (cached) {
+            return new Response(cached.body, {
+                status: cached.status,
+                headers: {
+                    ...Object.fromEntries(cached.headers),
+                    'Cache-Control': 'private, no-store',
+                    'Vary': 'Cookie, X-Requested-With'
+                }
+            });
+        }
     }
 
     const nawaBackupUrl = env?.nawa_backup_url || env?.NAWA_BACKUP_URL;
     const response = await fetchAllSources(nawaBackupUrl, fresh);
     if (response.ok) {
-        if (!fresh && response.headers.get('Cache-Control')?.includes('s-maxage=300')) {
-            cacheResponse(waitUntil, cacheKey, response);
-        } else if (fresh) {
-            const cacheableResponse = new Response(response.clone().body, {
-                status: response.status,
-                headers: {
-                    ...Object.fromEntries(response.headers),
-                    'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600'
-                }
-            });
-            cacheResponse(waitUntil, cacheKey, cacheableResponse);
-        }
+        const cacheableResponse = new Response(response.clone().body, {
+            status: response.status,
+            headers: {
+                ...Object.fromEntries(response.headers),
+                'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600'
+            }
+        });
+        cacheResponse(waitUntil, cacheKey, cacheableResponse);
     }
     return response;
 }

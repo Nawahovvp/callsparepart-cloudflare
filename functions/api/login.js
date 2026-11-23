@@ -1,4 +1,4 @@
-import { jsonResponse, readJsonBody } from '../_shared.js';
+import { createSessionCookie, jsonResponse, readJsonBody } from '../_shared.js';
 
 const EMPLOYEE_URL = 'https://opensheet.elk.sh/1eqVoLsZxGguEbRCC5rdI4iMVtQ7CK4T3uXRdx8zE3uw/EmployeeWeb';
 const DEFAULT_LOGIN_LOG_URL = 'https://script.google.com/macros/s/AKfycbyx8Y6S7iYw95BBd8nHSJArEU_o25mSb7QuF7pxdInbGZOIkDaiQLiaBwHFkHiILQPg/exec';
@@ -63,5 +63,8 @@ export async function onRequestPost({ request, env, waitUntil }) {
         })());
     }
 
-    return jsonResponse(user);
+    const sessionCookie = await createSessionCookie(request, env, user);
+    return jsonResponse(user, 200, {
+        'Set-Cookie': sessionCookie
+    });
 }

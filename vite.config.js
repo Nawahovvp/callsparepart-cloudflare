@@ -23,6 +23,8 @@ function apiDevServerPlugin() {
             handlerModule = await import('./functions/api/quick-data.js');
           } else if (route === 'login') {
             handlerModule = await import('./functions/api/login.js');
+          } else if (route === 'logout') {
+            handlerModule = await import('./functions/api/logout.js');
           } else if (route === 'save') {
             handlerModule = await import('./functions/api/save.js');
           } else if (route === 'outside-request') {

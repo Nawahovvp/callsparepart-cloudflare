@@ -1,4 +1,4 @@
-import { jsonResponse } from '../_shared.js';
+import { jsonResponse, requireApiAccess } from '../_shared.js';
 import { cacheResponse, collectCallMaterials, fetchSelectedSources, getEdgeCache, QUICK_SOURCE_KEYS } from './data.js';
 
 const QUICK_DATA_COLUMNS = {
@@ -64,33 +64,42 @@ async function fetchQuickData(fresh = false) {
             data: []
         })),
         failedSources: failures
-    }, 200, fresh
-        ? { 'Cache-Control': 'no-store' }
-        : { 'Cache-Control': 'public, max-age=10, s-maxage=60, stale-while-revalidate=300' });
+    }, 200, {
+        'Cache-Control': 'private, no-store',
+        'Vary': 'Cookie, X-Requested-With'
+    });
 }
 
-export async function onRequestGet({ request, waitUntil }) {
+export async function onRequestGet({ request, waitUntil, env }) {
+    const access = await requireApiAccess(request, env);
+    if (access.error) return access.error;
+
     const fresh = new URL(request.url).searchParams.get('fresh') === '1';
     const cacheKey = new Request(new URL('/api/quick-data', request.url).toString());
     if (!fresh) {
         const cached = await getEdgeCache(cacheKey);
-        if (cached) return cached;
+        if (cached) {
+            return new Response(cached.body, {
+                status: cached.status,
+                headers: {
+                    ...Object.fromEntries(cached.headers),
+                    'Cache-Control': 'private, no-store',
+                    'Vary': 'Cookie, X-Requested-With'
+                }
+            });
+        }
     }
 
     const response = await fetchQuickData(fresh);
     if (response.ok) {
-        if (!fresh && response.headers.get('Cache-Control')?.includes('s-maxage=60')) {
-            cacheResponse(waitUntil, cacheKey, response);
-        } else if (fresh) {
-            const cacheableResponse = new Response(response.clone().body, {
-                status: response.status,
-                headers: {
-                    ...Object.fromEntries(response.headers),
-                    'Cache-Control': 'public, max-age=10, s-maxage=60, stale-while-revalidate=300'
-                }
-            });
-            cacheResponse(waitUntil, cacheKey, cacheableResponse);
-        }
+        const cacheableResponse = new Response(response.clone().body, {
+            status: response.status,
+            headers: {
+                ...Object.fromEntries(response.headers),
+                'Cache-Control': 'public, max-age=10, s-maxage=60, stale-while-revalidate=300'
+            }
+        });
+        cacheResponse(waitUntil, cacheKey, cacheableResponse);
     }
     return response;
 }

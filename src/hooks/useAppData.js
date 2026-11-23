@@ -3,7 +3,7 @@ import { fetchAllData, fetchQuickData, sendOutsideRequest } from '../services/ap
 import { processRawData, calculateSummary, getCleanTeamPlant, normalizeMaterial, matchesDeptGroup, parseCallCreateDate, PLANT_MAPPING } from '../utils/helpers';
 import { loadFromCache, saveAllToCache, saveToCache } from '../services/cacheService';
 
-export function useAppData() {
+export function useAppData(isLoggedIn = true) {
     const [processedData, setProcessedData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -221,8 +221,14 @@ export function useAppData() {
         return request;
     }, [applyData]);
 
-    // Cache-first initialization
+    // Cache-first initialization (only when logged in)
     useEffect(() => {
+        if (!isLoggedIn) {
+            hasCacheLoaded.current = false;
+            setIsLoading(false);
+            return;
+        }
+
         const initData = async () => {
             if (hasCacheLoaded.current) return;
             hasCacheLoaded.current = true;
@@ -249,7 +255,7 @@ export function useAppData() {
 
         const interval = setInterval(() => fetchData(false), 5 * 60 * 1000);
         return () => clearInterval(interval);
-    }, [fetchData, applyData]);
+    }, [isLoggedIn, fetchData, applyData]);
 
     // --- Filtering Logic (matching original call.js exactly) ---
 

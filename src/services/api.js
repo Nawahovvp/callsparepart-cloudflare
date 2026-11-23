@@ -1,19 +1,45 @@
 import { loadAllFromCache } from './cacheService';
 
+const APP_REQUEST_HEADERS = {
+    'X-Requested-With': 'CallSparePartApp'
+};
+
+function notifyUnauthorized(url) {
+    if (typeof window !== 'undefined' && !url.startsWith('/api/login')) {
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+    }
+}
+
 async function requestJson(url, options = {}) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
     try {
-        const response = await fetch(url, { ...options, signal: controller.signal });
+        const response = await fetch(url, {
+            ...options,
+            credentials: 'same-origin',
+            headers: {
+                ...APP_REQUEST_HEADERS,
+                ...(options.headers || {})
+            },
+            signal: controller.signal
+        });
         let result;
         try {
             result = await response.json();
         } catch {
+            if (response.status === 401) {
+                notifyUnauthorized(url);
+            }
             throw new Error(`เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (HTTP ${response.status})`);
         }
 
         if (!response.ok) {
-            throw new Error(result?.error || `HTTP ${response.status}`);
+            if (response.status === 401) {
+                notifyUnauthorized(url);
+            }
+            const err = new Error(result?.error || `HTTP ${response.status}`);
+            err.status = response.status;
+            throw err;
         }
 
         return result;
@@ -24,6 +50,18 @@ async function requestJson(url, options = {}) {
         throw error;
     } finally {
         clearTimeout(timeoutId);
+    }
+}
+
+export async function logoutUser() {
+    try {
+        await fetch('/api/logout', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: APP_REQUEST_HEADERS
+        });
+    } catch (error) {
+        console.warn('[API] Logout request failed:', error);
     }
 }
 
@@ -112,11 +150,18 @@ export async function fetchQuickData({ fresh = false } = {}) {
 async function postJson(url, payload) {
     const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            ...APP_REQUEST_HEADERS
+        },
         body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
+        if (response.status === 401) {
+            notifyUnauthorized(url);
+        }
         let errorMessage;
         try {
             errorMessage = (await response.json()).error;

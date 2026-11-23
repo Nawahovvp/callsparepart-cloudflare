@@ -1,8 +1,11 @@
-import { forwardFormToAppsScript, jsonResponse, readJsonBody } from '../_shared.js';
+import { forwardFormToAppsScript, jsonResponse, readJsonBody, requireApiAccess } from '../_shared.js';
 
 const DEFAULT_OUTSIDE_REQUEST_URL = 'https://script.google.com/macros/s/AKfycbycEiGdjEFmLSPSqgBUBBntG0OnaatLTkNozlZTn0RRgZHiuL9HCWisIsmMqth9Dzrv/exec';
 
 export async function onRequestPost({ request, env }) {
+    const access = await requireApiAccess(request, env);
+    if (access.error) return access.error;
+
     const parsed = await readJsonBody(request);
     if (parsed.error) return parsed.error;
 

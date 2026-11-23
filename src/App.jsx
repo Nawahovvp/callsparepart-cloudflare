@@ -11,7 +11,26 @@ import ControlPanel from './components/ControlPanel';
 import DataTable from './components/DataTable';
 import RightMenuBar from './components/RightMenuBar';
 import { useAppData } from './hooks/useAppData';
+import { logoutUser } from './services/api';
 import { PLANT_MAPPING, exportToCSV } from './utils/helpers';
+
+function getStoredUser() {
+  const cachedUserStr = localStorage.getItem('user');
+  if (!cachedUserStr) return null;
+  try {
+    const cachedUser = JSON.parse(cachedUserStr);
+    const loginTime = cachedUser.loginTime || 0;
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    if (Date.now() - loginTime > twentyFourHours) {
+      localStorage.removeItem('user');
+      return null;
+    }
+    return cachedUser;
+  } catch {
+    localStorage.removeItem('user');
+    return null;
+  }
+}
 
 const lazyNamed = (loadModule, exportName) =>
   lazy(() => loadModule().then((module) => ({ default: module[exportName] })));
@@ -64,8 +83,8 @@ function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
+  const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getStoredUser()));
   const [showAllCards, setShowAllCards] = useState(() => {
     const saved = localStorage.getItem('showAllCards');
     if (saved !== null) return saved === 'true';
@@ -74,26 +93,13 @@ function App() {
   });
 
   useEffect(() => {
-    const cachedUserStr = localStorage.getItem('user');
-    if (cachedUserStr) {
-      try {
-        const cachedUser = JSON.parse(cachedUserStr);
-        const loginTime = cachedUser.loginTime || 0;
-        const now = Date.now();
-        const twentyFourHours = 24 * 60 * 60 * 1000;
-
-        if (now - loginTime > twentyFourHours) {
-          localStorage.removeItem('user');
-          setIsLoggedIn(false);
-          setCurrentUser(null);
-        } else {
-          setCurrentUser(cachedUser);
-          setIsLoggedIn(true);
-        }
-      } catch {
-        localStorage.removeItem('user');
-      }
-    }
+    const handleUnauthorized = () => {
+      localStorage.removeItem('user');
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+    };
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, []);
 
   const {
@@ -118,7 +124,7 @@ function App() {
     refreshDataBackground,
     updateRowLocally,
     handleOutsideRequest
-  } = useAppData();
+  } = useAppData(isLoggedIn);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -448,7 +454,7 @@ function App() {
   const queryParams = new URLSearchParams(window.location.search);
   const currentPagePath = queryParams.get('page');
 
-  if (currentPagePath === 'spare-summary') {
+  if (currentPagePath === 'spare-summary' && isLoggedIn) {
     return (
       <Suspense fallback={null}>
         <SpareSummaryPage
@@ -512,6 +518,7 @@ function App() {
           <AppHeader
             user={currentUser}
             onLogout={() => {
+              logoutUser();
               localStorage.removeItem('user');
               setIsLoggedIn(false);
               setCurrentUser(null);
