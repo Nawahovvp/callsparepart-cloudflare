@@ -134,21 +134,24 @@ export default function DataTable({
                 <table id="data-table" className="compact">
                     <thead>
                         <tr>
-                            <th style={{ width: 28, minWidth: 28, textAlign: 'center' }}>
-                                <input type="checkbox" onChange={onSelectAll} />
-                            </th>
                             {COLUMNS.map(col => (
-                                <th
-                                    key={col.key}
-                                    data-column={col.key}
-                                    className="sortable"
-                                    onClick={() => onSort(col.key)}
-                                >
-                                    {col.label}
-                                    {sortConfig?.key === col.key && (
-                                        <span className="arrow">{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>
+                                <React.Fragment key={col.key}>
+                                    <th
+                                        data-column={col.key}
+                                        className="sortable"
+                                        onClick={() => onSort(col.key)}
+                                    >
+                                        {col.label}
+                                        {sortConfig?.key === col.key && (
+                                            <span className="arrow">{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>
+                                        )}
+                                    </th>
+                                    {col.key === 'Ticket Number' && (
+                                        <th data-column="select" style={{ width: 28, minWidth: 28, textAlign: 'center' }}>
+                                            <input type="checkbox" onChange={onSelectAll} />
+                                        </th>
                                     )}
-                                </th>
+                                </React.Fragment>
                             ))}
                             <th data-column="detail" style={{ width: 70, minWidth: 70 }}>รายละเอียด</th>
                         </tr>
@@ -196,9 +199,6 @@ export default function DataTable({
                                 };
                                 return (
                                     <tr key={row.id || index} className={rowClassName}>
-                                        <td style={{ textAlign: 'center', width: 28 }}>
-                                            <input type="checkbox" checked={selectedRows?.includes(row.id)} onChange={() => onSelectRow(row.id)} />
-                                        </td>
                                         {/* StatusGroup */}
                                         {spans['StatusGroup'] > 0 && (
                                             <td data-column="StatusGroup" {...mergedProps('StatusGroup', row._isManualStatusCall ? 'manual-indicator' : '')}>
@@ -237,13 +237,27 @@ export default function DataTable({
                                         )}
                                         {spans['Ticket Number'] > 0 && (
                                             <td data-column="Ticket Number" {...mergedProps('Ticket Number')}>
-                                                <span style={{ cursor: 'pointer', textDecoration: 'underline', color: '#0d6efd', fontWeight: 'bold' }}
-                                                    onClick={(e) => { e.stopPropagation(); onTicketClick?.(row); }}>
-                                                    {row['Ticket Number']}
-                                                </span>
+                                                {row['Ticket Number']}
                                             </td>
                                         )}
-                                        <td data-column="Material" style={isMismatchVipa ? { textDecoration: 'line-through', color: 'var(--danger-color)', fontWeight: 'bold' } : undefined}>{row['Material']}</td>
+                                        <td data-column="select" style={{ textAlign: 'center', width: 28 }}>
+                                            <input type="checkbox" checked={selectedRows?.includes(row.id)} onChange={() => onSelectRow(row.id)} />
+                                        </td>
+                                        <td data-column="Material">
+                                            {materialVal ? (
+                                                <span
+                                                    style={{
+                                                        cursor: 'pointer',
+                                                        textDecoration: isMismatchVipa ? 'line-through' : 'underline',
+                                                        color: isMismatchVipa ? 'var(--danger-color)' : '#0d6efd',
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                    onClick={(e) => { e.stopPropagation(); onTicketClick?.(row); }}
+                                                >
+                                                    {row['Material']}
+                                                </span>
+                                            ) : row['Material']}
+                                        </td>
                                         <td data-column="Description" style={isMismatchVipa ? { textDecoration: 'line-through', color: 'var(--danger-color)', fontWeight: 'bold' } : undefined}>{row['Description']}</td>
                                         {/* Rebuilt */}
                                         <td data-column="Rebuilt" style={{ textAlign: 'center' }}>
@@ -394,18 +408,15 @@ export default function DataTable({
                                 {/* Shared Ticket Header */}
                                 <div className="deck-top">
                                     <div className="deck-top-left">
+                                        <span className="deck-ticket">
+                                            {head['Ticket Number']}
+                                        </span>
                                         <input
                                             type="checkbox"
                                             className="deck-checkbox"
                                             checked={allSelected}
                                             onChange={toggleGroupSelect}
                                         />
-                                        <span
-                                            className="deck-ticket"
-                                            onClick={(e) => { e.stopPropagation(); onTicketClick?.(head); }}
-                                        >
-                                            {head['Ticket Number']}
-                                        </span>
                                         {head['Call Type'] && <span className="deck-type">{head['Call Type']}</span>}
                                         <span className="deck-brand" title={head['Brand']}>{head['Brand']}</span>
                                         <span className="deck-days">{dayRepair}ว.</span>
@@ -454,7 +465,12 @@ export default function DataTable({
                                         return (
                                             <div key={row.id || idx} className="deck-subitem">
                                                 <div className="deck-mid">
-                                                    <span className={`deck-mat ${isMismatchVipa ? 'strike' : ''}`}>{row['Material']}</span>
+                                                    <span
+                                                        className={`deck-mat ${isMismatchVipa ? 'strike' : ''}`}
+                                                        onClick={materialVal ? (e) => { e.stopPropagation(); onTicketClick?.(row); } : undefined}
+                                                    >
+                                                        {row['Material']}
+                                                    </span>
                                                     {row['จำนวน'] !== undefined && row['จำนวน'] !== null && row['จำนวน'] !== '' && (
                                                         <span className="deck-pill dark-red">×{row['จำนวน']}</span>
                                                     )}
