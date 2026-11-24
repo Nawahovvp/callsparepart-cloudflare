@@ -1227,6 +1227,13 @@ export function getCleanTeamPlant(tp) {
     return (tp || "").replace(/Stock\s*/gi, '').trim();
 }
 
+export function getTeamPlantCardKey(tp) {
+    const clean = getCleanTeamPlant(tp);
+    if (!clean) return '';
+    if (/^SA(\s|$)/i.test(clean)) return 'กทม';
+    return clean;
+}
+
 export function getDesc(row) {
     return row["Description"] || row["Discription"] || row["Desc"] || "";
 }

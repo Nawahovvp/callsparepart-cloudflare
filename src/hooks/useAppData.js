@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchAllData, fetchQuickData, sendOutsideRequest } from '../services/api';
-import { processRawData, calculateSummary, getCleanTeamPlant, normalizeMaterial, matchesDeptGroup, DEFAULT_DEPT_GROUPS, parseCallCreateDate, PLANT_MAPPING } from '../utils/helpers';
+import { processRawData, calculateSummary, getCleanTeamPlant, getTeamPlantCardKey, normalizeMaterial, matchesDeptGroup, DEFAULT_DEPT_GROUPS, parseCallCreateDate, PLANT_MAPPING } from '../utils/helpers';
 import { loadFromCache, saveAllToCache, saveToCache } from '../services/cacheService';
 
 export function useAppData(isLoggedIn = true) {
@@ -14,7 +14,7 @@ export function useAppData(isLoggedIn = true) {
     const [searchTerm, setSearchTerm] = useState('');
     const [dashboardFilter, setDashboardFilter] = useState(null); // null = show all
     const [teamPlantFilter, setTeamPlantFilter] = useState('');
-    const [pendingUnitFilter, setPendingUnitFilter] = useState('');
+    const [pendingUnitFilter, setPendingUnitFilter] = useState([]);
     const [stockAnswerFilter, setStockAnswerFilter] = useState('');
     const [statusCallFilter, setStatusCallFilter] = useState('');
     const [companyFilter, setCompanyFilter] = useState('');
@@ -264,11 +264,19 @@ export function useAppData(isLoggedIn = true) {
             if (!ticket || String(ticket).trim() === "" || String(ticket).trim() === "-") return false;
 
             const cleanTP = getCleanTeamPlant(row["TeamPlant"]);
+            const teamPlantCardKey = getTeamPlantCardKey(row["TeamPlant"]);
 
             // TeamPlant filter
-            if (excludeType !== 'teamPlant' && teamPlantFilter && cleanTP !== teamPlantFilter) return false;
-            // PendingUnit filter
-            if (excludeType !== 'pending' && pendingUnitFilter && (row["ค้างหน่วยงาน"] || "") !== pendingUnitFilter) return false;
+            if (excludeType !== 'teamPlant' && teamPlantFilter && teamPlantCardKey !== teamPlantFilter) return false;
+            // PendingUnit filter (supports multi-select)
+            if (excludeType !== 'pending') {
+                const selectedPendingUnits = Array.isArray(pendingUnitFilter)
+                    ? pendingUnitFilter
+                    : (pendingUnitFilter ? [pendingUnitFilter] : []);
+                if (selectedPendingUnits.length > 0 && !selectedPendingUnits.includes(row["ค้างหน่วยงาน"] || "")) {
+                    return false;
+                }
+            }
             // StockAnswer filter
             if (excludeType !== 'stock' && stockAnswerFilter && (row["คลังตอบ"] || "") !== stockAnswerFilter) return false;
             // StatusCall filter (uses StatusX = row-level status, matching original)
@@ -293,7 +301,7 @@ export function useAppData(isLoggedIn = true) {
             }
 
             if (excludeType !== 'gm' && gmFilter && row.GM !== gmFilter) return false;
-            if (excludeType !== 'dept' && deptGroupFilter && !matchesDeptGroup(row["ค้างหน่วยงาน"], deptGroupFilter)) return false;
+            if (excludeType !== 'dept' && !teamPlantFilter && deptGroupFilter && !matchesDeptGroup(row["ค้างหน่วยงาน"], deptGroupFilter)) return false;
 
             return true;
         });
@@ -405,7 +413,7 @@ export function useAppData(isLoggedIn = true) {
     }, []);
 
     const availableFilters = useMemo(() => ({
-        teamPlant: computeFilterOptions(teamPlantFilterData, null, (row) => getCleanTeamPlant(row["TeamPlant"])),
+        teamPlant: computeFilterOptions(teamPlantFilterData, null, (row) => getTeamPlantCardKey(row["TeamPlant"])),
         pendingUnit: computeFilterOptions(pendingFilterData, "ค้างหน่วยงาน"),
         pendingUnitHasWaiting: getPendingUnitWaitingStatus(pendingFilterData),
         pendingUnitAllDone: getPendingUnitAllDoneStatus(pendingFilterData),

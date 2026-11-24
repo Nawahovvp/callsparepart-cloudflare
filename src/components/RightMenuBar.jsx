@@ -281,15 +281,6 @@ export default function RightMenuBar({
                             defaultOpen={true}
                         />
                         <DrawerFilterGroup
-                            title="ศูนย์พื้นที่"
-                            icon="fas fa-building"
-                            options={availableFilters?.teamPlant}
-                            activeValue={teamPlantFilter}
-                            onSelect={onTeamPlantChange}
-                            sectioned={true}
-                            defaultOpen={true}
-                        />
-                        <DrawerFilterGroup
                             title="คลังตอบ"
                             icon="fas fa-reply-all"
                             options={availableFilters?.stockAnswer}

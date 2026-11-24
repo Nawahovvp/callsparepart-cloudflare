@@ -2971,6 +2971,26 @@
       min-height: 58px;
     }
 
+    .group-dashboard.group-dashboard-teamplant {
+      grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+      justify-content: stretch;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .group-dashboard.group-dashboard-teamplant .dashboard-card.group-card {
+      padding: 7px 9px;
+      min-height: 52px;
+      border-radius: 9px;
+    }
+
+    .teamplant-card:nth-child(6n+1) { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .teamplant-card:nth-child(6n+2) { background: linear-gradient(135deg, #0d9488, #0f766e); }
+    .teamplant-card:nth-child(6n+3) { background: linear-gradient(135deg, #4f46e5, #4338ca); }
+    .teamplant-card:nth-child(6n+4) { background: linear-gradient(135deg, #ea580c, #c2410c); }
+    .teamplant-card:nth-child(6n+5) { background: linear-gradient(135deg, #0284c7, #0369a1); }
+    .teamplant-card:nth-child(6n+6) { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+
     /* Dusk Theme Group & CallType Cards */
     [data-theme="dusk"] .gm-card:nth-child(4n+1) { background: linear-gradient(135deg, #c2410c, #7c2d12); }
     [data-theme="dusk"] .gm-card:nth-child(4n+2) { background: linear-gradient(135deg, #7c3aed, #4c1d95); }
@@ -4211,7 +4231,10 @@
     }
 
     table#data-table td[data-column="Company"],
-    table#data-table td[data-column="Company"].merged-ticket-cell {
+    table#data-table td[data-column="Company"].merged-ticket-cell,
+    table#data-table th[data-column="ค้างหน่วยงาน"],
+    table#data-table td[data-column="ค้างหน่วยงาน"],
+    table#data-table td[data-column="ค้างหน่วยงาน"].merged-ticket-cell {
       text-align: center !important;
     }
 
@@ -6987,6 +7010,12 @@
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         gap: 8px !important;
         margin-bottom: 6px !important;
+    }
+
+    .group-dashboard.group-dashboard-teamplant {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+        margin-bottom: 8px !important;
     }
 
     .dashboard-card,

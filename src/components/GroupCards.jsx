@@ -1,34 +1,43 @@
 import React from 'react';
 
-function GroupCard({ label, value, percent, id, onClick, isActive, typeClass, isDepartmentClear }) {
+function GroupCard({ label, value, percent, id, onClick, isActive, typeClass, isDepartmentClear, compact }) {
     return (
         <div
             className={`dashboard-card group-card ${typeClass} ${isDepartmentClear ? 'dept-clear' : ''} ${isActive ? 'active' : ''}`}
             onClick={() => onClick(id)}
-            style={{ minWidth: '130px' }}
+            style={compact ? undefined : { minWidth: '130px' }}
+            title={`${label}: ${value} (${percent}%)`}
         >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', marginBottom: '2px' }}>
-                <h3 style={{ fontSize: '0.8em', margin: 0 }}>{label}</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px', width: '100%', marginBottom: '2px' }}>
+                <h3 style={{
+                    fontSize: compact ? '0.76em' : '0.8em',
+                    margin: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    textAlign: 'left'
+                }}>{label}</h3>
                 {isActive && (
                     <div style={{
                         background: '#fff',
                         borderRadius: '50%',
-                        width: '18px',
-                        height: '18px',
+                        width: compact ? '15px' : '18px',
+                        height: compact ? '15px' : '18px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        flexShrink: 0,
                         boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                     }}>
-                        <i className="fas fa-check-circle" style={{ fontSize: '16px', color: '#e74c3c' }}></i>
+                        <i className="fas fa-check-circle" style={{ fontSize: compact ? '13px' : '16px', color: '#e74c3c' }}></i>
                     </div>
                 )}
             </div>
-            <div className="value" style={{ fontSize: '1.2em' }}>{value}</div>
-            <div className="progress-container" style={{ height: '4px', backgroundColor: 'rgba(255,255,255,0.2)' }}>
+            <div className="value" style={{ fontSize: compact ? '1.08em' : '1.2em' }}>{value}</div>
+            <div className="progress-container" style={{ height: compact ? '3px' : '4px', backgroundColor: 'rgba(255,255,255,0.2)' }}>
                 <div className="progress-bar" style={{ width: `${percent}%`, backgroundColor: '#fff' }}></div>
             </div>
-            <div className="progress-text" style={{ color: '#fff' }}>{percent}%</div>
+            <div className="progress-text" style={{ color: '#fff', fontSize: compact ? '0.72em' : undefined }}>{percent}%</div>
         </div>
     );
 }
@@ -42,6 +51,7 @@ export default function GroupCards({ title, stats = [], onCardClick, activeFilte
             return `calltype-${cleanLabel}-card`;
         }
         if (prefix === 'gm_') return 'gm-card';
+        if (prefix === 'teamplant_') return 'teamplant-card';
         if (prefix === 'dept_') {
             const cleanLabel = String(label).toLowerCase();
             return `dept-card dept-${cleanLabel}-card`;
@@ -74,7 +84,7 @@ export default function GroupCards({ title, stats = [], onCardClick, activeFilte
                     {title}
                 </h2>
             )}
-            <div className={`dashboard group-dashboard ${compact ? 'group-dashboard-compact' : ''}`}>
+            <div className={`dashboard group-dashboard ${compact ? 'group-dashboard-compact' : ''} ${prefix === 'teamplant_' ? 'group-dashboard-teamplant' : ''}`}>
                 {displayStats.map((item, index) => (
                     <GroupCard
                         key={index}
@@ -86,6 +96,7 @@ export default function GroupCards({ title, stats = [], onCardClick, activeFilte
                         isActive={isItemActive(item.label)}
                         typeClass={getTypeClass(item.label)}
                         isDepartmentClear={prefix === 'dept_' && item.waitingResponse === 0}
+                        compact={compact}
                     />
                 ))}
                 {children}

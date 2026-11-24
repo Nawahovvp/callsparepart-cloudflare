@@ -12,7 +12,7 @@ import DataTable from './components/DataTable';
 import RightMenuBar from './components/RightMenuBar';
 import { useAppData } from './hooks/useAppData';
 import { logoutUser } from './services/api';
-import { PLANT_MAPPING, DEFAULT_DEPT_GROUPS, DEFAULT_VISIBLE_DEPT_GROUPS, exportToCSV } from './utils/helpers';
+import { PLANT_MAPPING, DEFAULT_DEPT_GROUPS, exportToCSV } from './utils/helpers';
 
 function getStoredUser() {
   const cachedUserStr = localStorage.getItem('user');
@@ -119,7 +119,7 @@ function App() {
     searchTerm, setSearchTerm,
     dashboardFilter, setDashboardFilter,
     gmFilter, setGmFilter,
-    deptGroupFilter, setDeptGroupFilter,
+    setDeptGroupFilter,
     engData,
     refreshData,
     refreshDataBackground,
@@ -283,7 +283,7 @@ function App() {
 
     appliedDefaultUnitUserRef.current = userKey;
     if (userDefaultPendingUnit) {
-      setPendingUnitFilter(userDefaultPendingUnit);
+      setPendingUnitFilter([userDefaultPendingUnit]);
       setCurrentPage(1);
     }
   }, [isLoggedIn, currentUser, availableFilters?.pendingUnit, userDefaultPendingUnit, setPendingUnitFilter]);
@@ -297,7 +297,8 @@ function App() {
     gmFilter
   ].filter(Boolean).length;
 
-  const activeFilterCount = secondaryFilterCount + (pendingUnitFilter ? 1 : 0);
+  const pendingUnitCount = Array.isArray(pendingUnitFilter) ? pendingUnitFilter.length : (pendingUnitFilter ? 1 : 0);
+  const activeFilterCount = secondaryFilterCount + pendingUnitCount;
 
   const handlePrintAction = async () => {
     if (selectedRows.length > 0) {
@@ -342,7 +343,7 @@ function App() {
       setDeptGroupFilter([...DEFAULT_DEPT_GROUPS]);
       // Reset all other filters
       setTeamPlantFilter('');
-      setPendingUnitFilter('');
+      setPendingUnitFilter([]);
       setStockAnswerFilter('');
       setStatusCallFilter('');
       setCompanyFilter('');
@@ -370,6 +371,13 @@ function App() {
       return;
     }
 
+    // Case 2c: TeamPlant Filter
+    if (filter.startsWith && filter.startsWith('teamplant_')) {
+      const tpName = filter.replace('teamplant_', '');
+      setTeamPlantFilter(prev => prev === tpName ? '' : tpName);
+      return;
+    }
+
     // Case 3: Status/Type Dashboard Filter
     // Toggle logic for general dashboard filters
     setDashboardFilter(prev => prev === filter ? null : filter);
@@ -393,7 +401,7 @@ function App() {
       return;
     }
     if (summary.maxPendingUnit && summary.maxPendingUnit !== '-') {
-      setPendingUnitFilter(summary.maxPendingUnit);
+      setPendingUnitFilter([summary.maxPendingUnit]);
       setDashboardFilter(null);
       setCurrentPage(1);
     }
@@ -526,7 +534,7 @@ function App() {
               localStorage.removeItem('user');
               setIsLoggedIn(false);
               setCurrentUser(null);
-              setPendingUnitFilter('');
+              setPendingUnitFilter([]);
             }}
             lastUpdated={lastUpdated}
             onRefresh={refreshData}
@@ -712,15 +720,22 @@ function App() {
 
                 <div className="scroll-reveal-section delay-2">
                   <GroupCards
-                    title="สรุปผลตามกลุ่มหน่วยงาน"
-                    stats={showAllCards
-                      ? summary.deptGroupStats
-                      : (summary.deptGroupStats || []).filter(item => DEFAULT_VISIBLE_DEPT_GROUPS.includes(item.label))}
+                    title="สรุปผลตามศูนย์พื้นที่"
+                    stats={(() => {
+                      const entries = Object.entries(availableFilters?.teamPlant || {})
+                        .filter(([, count]) => count > 0)
+                        .sort((a, b) => b[1] - a[1]);
+                      const total = entries.reduce((sum, [, count]) => sum + count, 0);
+                      return entries.map(([label, value]) => ({
+                        label,
+                        value,
+                        percent: total > 0 ? Math.round((value / total) * 100) : 0
+                      }));
+                    })()}
                     onCardClick={handleDashboardClick}
-                    activeFilter={deptGroupFilter}
-                    prefix="dept_"
-                    showZero={true}
-                    compact={!showAllCards}
+                    activeFilter={teamPlantFilter}
+                    prefix="teamplant_"
+                    compact={true}
                   />
                 </div>
 
@@ -860,7 +875,7 @@ function App() {
                 onClose={() => setGraphOpen(false)}
                 data={data}
                 onFilterPendingUnit={(unit) => {
-                  setPendingUnitFilter(unit);
+                  setPendingUnitFilter(unit ? [unit] : []);
                   setTeamPlantFilter('');
                   setStockAnswerFilter('');
                   setStatusCallFilter('');

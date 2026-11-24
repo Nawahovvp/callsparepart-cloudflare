@@ -66,6 +66,18 @@ export default function ControlPanel({
         [sortedPendingUnits]
     );
 
+    const selectedPendingUnits = React.useMemo(
+        () => (Array.isArray(pendingUnitFilter) ? pendingUnitFilter : (pendingUnitFilter ? [pendingUnitFilter] : [])),
+        [pendingUnitFilter]
+    );
+
+    const togglePendingUnit = (unitKey) => {
+        const next = selectedPendingUnits.includes(unitKey)
+            ? selectedPendingUnits.filter((item) => item !== unitKey)
+            : [...selectedPendingUnits, unitKey];
+        onPendingUnitChange(next);
+    };
+
     const groupedPendingUnits = React.useMemo(() => {
         const buckets = new Map();
         const groupOrder = [...DEPT_GROUPS.map(g => g.key), 'อื่นๆ'];
@@ -144,8 +156,8 @@ export default function ControlPanel({
                         </span>
                         <button
                             type="button"
-                            className={`quick-unit-chip ${!pendingUnitFilter ? 'active' : ''}`}
-                            onClick={() => onPendingUnitChange('')}
+                            className={`quick-unit-chip ${selectedPendingUnits.length === 0 ? 'active' : ''}`}
+                            onClick={() => onPendingUnitChange([])}
                         >
                             <span>ทั้งหมด</span>
                             <span className="quick-unit-count">{totalPendingUnitItems}</span>
@@ -170,7 +182,7 @@ export default function ControlPanel({
                                     </span>
                                     <div className="quick-unit-chips">
                                         {group.items.map(([key, count]) => {
-                                            const isActive = pendingUnitFilter === key;
+                                            const isActive = selectedPendingUnits.includes(key);
                                             const isClear = pendingUnitAllDone?.[key] === true;
                                             const isUserUnit = Boolean(userPendingUnit && userPendingUnit === key);
                                             const displayLabel = String(key).replace(/^Stock\s*/i, '').trim() || key;
@@ -179,7 +191,7 @@ export default function ControlPanel({
                                                     key={key}
                                                     type="button"
                                                     className={`quick-unit-chip ${isActive ? 'active' : ''} ${isClear ? 'clear' : ''} ${isUserUnit ? 'is-user-unit' : ''}`}
-                                                    onClick={() => onPendingUnitChange(isActive ? '' : key)}
+                                                    onClick={() => togglePendingUnit(key)}
                                                     title={isUserUnit ? `หน่วยงานของคุณ (${key})` : `กรองค้างหน่วยงาน: ${key}`}
                                                 >
                                                     {isUserUnit && <i className="fas fa-user quick-unit-user-icon" aria-hidden="true"></i>}
