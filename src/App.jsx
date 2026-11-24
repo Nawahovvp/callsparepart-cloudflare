@@ -106,6 +106,7 @@ function App() {
     data,
     allData,
     isLoading,
+    isSyncing,
     error,
     lastUpdated,
     summary,
@@ -504,6 +505,7 @@ function App() {
           data={allData}
           rawSources={rawSources}
           isLoading={isLoading}
+          isSyncing={isSyncing}
           onClose={() => window.close()}
         />
       </Suspense>

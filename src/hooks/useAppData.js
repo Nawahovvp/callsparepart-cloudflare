@@ -6,6 +6,7 @@ import { loadFromCache, saveAllToCache, saveToCache } from '../services/cacheSer
 export function useAppData(isLoggedIn = true) {
     const [processedData, setProcessedData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSyncing, setIsSyncing] = useState(false);
     const [error, setError] = useState(null);
     const [lastUpdated, setLastUpdated] = useState(null);
 
@@ -152,6 +153,7 @@ export function useAppData(isLoggedIn = true) {
         }
 
         if (showLoading) setIsLoading(true);
+        setIsSyncing(true);
         setError(null);
         const generation = ++fetchGeneration.current;
 
@@ -210,6 +212,7 @@ export function useAppData(isLoggedIn = true) {
                 if (showLoading) setIsLoading(false);
                 if (inFlightFetch.current === request) {
                     inFlightFetch.current = null;
+                    setIsSyncing(false);
                 }
             }
         })();
@@ -531,6 +534,7 @@ export function useAppData(isLoggedIn = true) {
         allData: processedData,
         baseFilteredData,
         isLoading,
+        isSyncing,
         error,
         lastUpdated,
         summary,

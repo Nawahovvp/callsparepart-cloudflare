@@ -1,12 +1,34 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { normalizeMaterial, matchesDeptGroup, DEPT_GROUPS } from '../utils/helpers';
 import { PoDetailsModal, PrDetailsModal, OtherPlantModal } from './TableModals';
 import { computeSpareSummaryData } from '../utils/syncHelpers';
 
-export default function SpareSummaryPage({ data = [], rawSources = {}, isLoading, onClose }) {
+export default function SpareSummaryPage({ data = [], rawSources = {}, isLoading, isSyncing = false, onClose }) {
     const [deptGroupFilter, setDeptGroupFilter] = useState('Stock'); // Default to Stock always
     const [prgFilter, setPrgFilter] = useState('');
     const [supplierFilter, setSupplierFilter] = useState('');
+    const [showDoneToast, setShowDoneToast] = useState(false);
+    const wasSyncingRef = useRef(Boolean(isSyncing || isLoading));
+    const isSyncActive = Boolean(isSyncing || isLoading);
+
+    useEffect(() => {
+        if (isSyncActive) {
+            wasSyncingRef.current = true;
+            return undefined;
+        }
+        if (wasSyncingRef.current) {
+            wasSyncingRef.current = false;
+            const showTimer = setTimeout(() => setShowDoneToast(true), 0);
+            const hideTimer = setTimeout(() => setShowDoneToast(false), 2600);
+            return () => {
+                clearTimeout(showTimer);
+                clearTimeout(hideTimer);
+            };
+        }
+        return undefined;
+    }, [isSyncActive]);
+
+    const syncToastState = isSyncActive ? 'loading' : (showDoneToast ? 'done' : 'hidden');
 
     const handleDeptGroupChange = (val) => {
         setDeptGroupFilter(val);
@@ -485,6 +507,51 @@ export default function SpareSummaryPage({ data = [], rawSources = {}, isLoading
                 description={otherPlantModal.row?.["Description"]}
                 plantStockData={rawSources.plantStockData}
             />
+
+            {syncToastState !== 'hidden' && (
+                <div
+                    role="status"
+                    aria-live="polite"
+                    style={{
+                        position: 'fixed',
+                        right: 20,
+                        bottom: 20,
+                        zIndex: 2000,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '10px 16px',
+                        borderRadius: 12,
+                        background: syncToastState === 'done'
+                            ? 'linear-gradient(135deg, #16a34a, #15803d)'
+                            : 'linear-gradient(135deg, #1e293b, #0f172a)',
+                        color: '#ffffff',
+                        boxShadow: '0 10px 25px rgba(15, 23, 42, 0.28)',
+                        border: '1px solid rgba(255, 255, 255, 0.14)',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        pointerEvents: 'none'
+                    }}
+                >
+                    <i
+                        className={syncToastState === 'done' ? 'fas fa-check-circle' : 'fas fa-sync-alt fa-spin'}
+                        style={{ fontSize: 15, color: syncToastState === 'done' ? '#bbf7d0' : '#60a5fa' }}
+                        aria-hidden="true"
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
+                        <span>
+                            {syncToastState === 'done'
+                                ? 'อัปเดตข้อมูลล่าสุดเรียบร้อยแล้ว'
+                                : 'กำลังโหลดข้อมูลล่าสุดเบื้องหลัง...'}
+                        </span>
+                        {syncToastState === 'loading' && (
+                            <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.8 }}>
+                                กำลังซิงก์ข้อมูล PO · PR · Stock ล่าสุด
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
 
         </div>
     );
