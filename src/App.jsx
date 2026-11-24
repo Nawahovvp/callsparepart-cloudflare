@@ -12,7 +12,7 @@ import DataTable from './components/DataTable';
 import RightMenuBar from './components/RightMenuBar';
 import { useAppData } from './hooks/useAppData';
 import { logoutUser } from './services/api';
-import { PLANT_MAPPING, exportToCSV } from './utils/helpers';
+import { PLANT_MAPPING, DEFAULT_DEPT_GROUPS, DEFAULT_VISIBLE_DEPT_GROUPS, exportToCSV } from './utils/helpers';
 
 function getStoredUser() {
   const cachedUserStr = localStorage.getItem('user');
@@ -325,11 +325,7 @@ function App() {
       const next = !prev;
       localStorage.setItem('showAllCards', String(next));
       localStorage.setItem('hideDeptCards', String(!next));
-      if (next) {
-        setDeptGroupFilter(null);
-      } else {
-        setDeptGroupFilter('Stock');
-      }
+      setDeptGroupFilter([...DEFAULT_DEPT_GROUPS]);
       return next;
     });
     setCurrentPage(1);
@@ -343,7 +339,7 @@ function App() {
     if (filter === 'total') {
       setDashboardFilter(null);
       setGmFilter(null);
-      setDeptGroupFilter(showAllCards ? null : 'Stock');
+      setDeptGroupFilter([...DEFAULT_DEPT_GROUPS]);
       // Reset all other filters
       setTeamPlantFilter('');
       setPendingUnitFilter('');
@@ -362,10 +358,15 @@ function App() {
       return;
     }
 
-    // Case 2b: Dept Group Filter
+    // Case 2b: Dept Group Filter (multi-select)
     if (filter.startsWith && filter.startsWith('dept_')) {
       const deptName = filter.replace('dept_', '');
-      setDeptGroupFilter(prev => prev === deptName ? null : deptName);
+      setDeptGroupFilter(prev => {
+        const list = Array.isArray(prev) ? prev : (prev ? [prev] : []);
+        return list.includes(deptName)
+          ? list.filter(item => item !== deptName)
+          : [...list, deptName];
+      });
       return;
     }
 
@@ -709,18 +710,19 @@ function App() {
                   </div>
                 )}
 
-                {showAllCards && (
-                  <div className="scroll-reveal-section delay-2">
-                    <GroupCards
-                      title="สรุปผลตามกลุ่มหน่วยงาน"
-                      stats={summary.deptGroupStats}
-                      onCardClick={handleDashboardClick}
-                      activeFilter={deptGroupFilter}
-                      prefix="dept_"
-                      showZero={true}
-                    />
-                  </div>
-                )}
+                <div className="scroll-reveal-section delay-2">
+                  <GroupCards
+                    title="สรุปผลตามกลุ่มหน่วยงาน"
+                    stats={showAllCards
+                      ? summary.deptGroupStats
+                      : (summary.deptGroupStats || []).filter(item => DEFAULT_VISIBLE_DEPT_GROUPS.includes(item.label))}
+                    onCardClick={handleDashboardClick}
+                    activeFilter={deptGroupFilter}
+                    prefix="dept_"
+                    showZero={true}
+                    compact={!showAllCards}
+                  />
+                </div>
 
                 <div className="scroll-reveal-section delay-3">
                   <DashboardCards

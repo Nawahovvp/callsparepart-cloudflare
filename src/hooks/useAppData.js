@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchAllData, fetchQuickData, sendOutsideRequest } from '../services/api';
-import { processRawData, calculateSummary, getCleanTeamPlant, normalizeMaterial, matchesDeptGroup, parseCallCreateDate, PLANT_MAPPING } from '../utils/helpers';
+import { processRawData, calculateSummary, getCleanTeamPlant, normalizeMaterial, matchesDeptGroup, DEFAULT_DEPT_GROUPS, parseCallCreateDate, PLANT_MAPPING } from '../utils/helpers';
 import { loadFromCache, saveAllToCache, saveToCache } from '../services/cacheService';
 
 export function useAppData(isLoggedIn = true) {
@@ -19,12 +19,7 @@ export function useAppData(isLoggedIn = true) {
     const [statusCallFilter, setStatusCallFilter] = useState('');
     const [companyFilter, setCompanyFilter] = useState('');
     const [gmFilter, setGmFilter] = useState(null); // New state for hierarchical filtering
-    const [deptGroupFilter, setDeptGroupFilter] = useState(() => {
-        const saved = localStorage.getItem('showAllCards');
-        if (saved !== null) return saved === 'true' ? null : 'Stock';
-        const legacy = localStorage.getItem('hideDeptCards') ?? localStorage.getItem('hideNonStockDept');
-        return (legacy !== null ? legacy === 'true' : true) ? 'Stock' : null;
-    });
+    const [deptGroupFilter, setDeptGroupFilter] = useState(() => [...DEFAULT_DEPT_GROUPS]);
 
     const hasCacheLoaded = useRef(false);
     const inFlightFetch = useRef(null);

@@ -33,7 +33,7 @@ function GroupCard({ label, value, percent, id, onClick, isActive, typeClass, is
     );
 }
 
-export default function GroupCards({ title, stats = [], onCardClick, activeFilter, prefix, children, showZero = false }) {
+export default function GroupCards({ title, stats = [], onCardClick, activeFilter, prefix, children, showZero = false, compact = false }) {
     if (!stats || stats.length === 0) return null;
 
     const getTypeClass = (label) => {
@@ -52,12 +52,19 @@ export default function GroupCards({ title, stats = [], onCardClick, activeFilte
     const displayStats = (showZero || prefix === 'dept_') ? stats : stats.filter(item => item.value > 0);
     if (displayStats.length === 0) return null;
 
+    const isItemActive = (label) => {
+        if (Array.isArray(activeFilter)) {
+            return activeFilter.includes(label) || activeFilter.includes(`${prefix}${label}`);
+        }
+        return activeFilter === `${prefix}${label}` || activeFilter === label;
+    };
+
     return (
-        <div className="group-cards-section" style={{ marginTop: '20px' }}>
+        <div className={`group-cards-section ${compact ? 'compact-section' : ''}`} style={{ marginTop: compact ? '10px' : '20px' }}>
             {title && (
                 <h2 style={{
-                    fontSize: '1.2em',
-                    marginBottom: '20px',
+                    fontSize: compact ? '1.02em' : '1.2em',
+                    marginBottom: compact ? '10px' : '20px',
                     fontWeight: '700',
                     paddingLeft: '12px',
                     color: 'var(--text-primary)',
@@ -67,7 +74,7 @@ export default function GroupCards({ title, stats = [], onCardClick, activeFilte
                     {title}
                 </h2>
             )}
-            <div className="dashboard group-dashboard">
+            <div className={`dashboard group-dashboard ${compact ? 'group-dashboard-compact' : ''}`}>
                 {displayStats.map((item, index) => (
                     <GroupCard
                         key={index}
@@ -76,7 +83,7 @@ export default function GroupCards({ title, stats = [], onCardClick, activeFilte
                         percent={item.percent}
                         id={`${prefix}${item.label}`}
                         onClick={onCardClick}
-                        isActive={activeFilter === `${prefix}${item.label}` || activeFilter === item.label}
+                        isActive={isItemActive(item.label)}
                         typeClass={getTypeClass(item.label)}
                         isDepartmentClear={prefix === 'dept_' && item.waitingResponse === 0}
                     />

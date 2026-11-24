@@ -1,6 +1,17 @@
 import React from 'react';
-import { formatStockAnswerLabel } from '../utils/helpers';
+import { DEPT_GROUPS, getDeptGroups, formatStockAnswerLabel } from '../utils/helpers';
 import { getCusLogo } from '../utils/cusLogos';
+
+const GROUP_TAG_COLORS = {
+    Stock: { bg: '#eff6ff', border: '#93c5fd', color: '#1d4ed8' },
+    วิศวกรรม: { bg: '#f3e8ff', border: '#c4b5fd', color: '#5b21b6' },
+    Repair: { bg: '#fff7ed', border: '#fdba74', color: '#c2410c' },
+    จัดซื้อ: { bg: '#ecfdf5', border: '#6ee7b7', color: '#047857' },
+    ลูกค้า: { bg: '#fdf2f8', border: '#f9a8d4', color: '#be185d' },
+    Sale: { bg: '#f5f3ff', border: '#c4b5fd', color: '#6d28d9' },
+    จัดส่ง: { bg: '#f1f5f9', border: '#cbd5e1', color: '#334155' },
+    อื่นๆ: { bg: '#f8fafc', border: '#cbd5e1', color: '#475569' }
+};
 
 export default function ControlPanel({
     searchTerm,
@@ -55,6 +66,27 @@ export default function ControlPanel({
         [sortedPendingUnits]
     );
 
+    const groupedPendingUnits = React.useMemo(() => {
+        const buckets = new Map();
+        const groupOrder = [...DEPT_GROUPS.map(g => g.key), 'อื่นๆ'];
+        groupOrder.forEach(k => buckets.set(k, []));
+
+        sortedPendingUnits.forEach(([key, count]) => {
+            const matched = getDeptGroups(key)[0] || 'อื่นๆ';
+            if (!buckets.has(matched)) buckets.set(matched, []);
+            buckets.get(matched).push([key, count]);
+        });
+
+        return [...buckets.entries()]
+            .filter(([, items]) => items.length > 0)
+            .map(([groupKey, items]) => ({
+                key: groupKey,
+                label: groupKey,
+                items,
+                total: items.reduce((sum, [, count]) => sum + count, 0)
+            }));
+    }, [sortedPendingUnits]);
+
     return (
         <div id="searchContainer" className="modern-search-bar">
             <div className="search-row-primary">
@@ -105,11 +137,11 @@ export default function ControlPanel({
 
             {sortedPendingUnits.length > 0 && (
                 <div className="quick-unit-bar" role="group" aria-label="ตัวกรองด่วน ค้างหน่วยงาน">
-                    <span className="quick-unit-label">
-                        <i className="fas fa-layer-group"></i>
-                        <span>ค้างหน่วยงาน</span>
-                    </span>
-                    <div className="quick-unit-chips">
+                    <div className="quick-unit-header-col">
+                        <span className="quick-unit-label">
+                            <i className="fas fa-layer-group"></i>
+                            <span>ค้างหน่วยงาน</span>
+                        </span>
                         <button
                             type="button"
                             className={`quick-unit-chip ${!pendingUnitFilter ? 'active' : ''}`}
@@ -118,23 +150,46 @@ export default function ControlPanel({
                             <span>ทั้งหมด</span>
                             <span className="quick-unit-count">{totalPendingUnitItems}</span>
                         </button>
-                        {sortedPendingUnits.map(([key, count]) => {
-                            const isActive = pendingUnitFilter === key;
-                            const isClear = pendingUnitAllDone?.[key] === true;
-                            const isUserUnit = Boolean(userPendingUnit && userPendingUnit === key);
-                            const displayLabel = String(key).replace(/^Stock\s*/i, '').trim() || key;
+                    </div>
+                    <div className="quick-unit-groups-stack">
+                        {groupedPendingUnits.map((group) => {
+                            const tagStyle = GROUP_TAG_COLORS[group.key] || GROUP_TAG_COLORS['อื่นๆ'];
                             return (
-                                <button
-                                    key={key}
-                                    type="button"
-                                    className={`quick-unit-chip ${isActive ? 'active' : ''} ${isClear ? 'clear' : ''} ${isUserUnit ? 'is-user-unit' : ''}`}
-                                    onClick={() => onPendingUnitChange(isActive ? '' : key)}
-                                    title={isUserUnit ? `หน่วยงานของคุณ (${key})` : `กรองค้างหน่วยงาน: ${key}`}
-                                >
-                                    {isUserUnit && <i className="fas fa-user quick-unit-user-icon" aria-hidden="true"></i>}
-                                    <span>{displayLabel}</span>
-                                    <span className="quick-unit-count">{count}</span>
-                                </button>
+                                <div key={group.key} className="quick-unit-group-row">
+                                    <span
+                                        className="quick-unit-group-tag"
+                                        style={{
+                                            backgroundColor: tagStyle.bg,
+                                            borderColor: tagStyle.border,
+                                            color: tagStyle.color
+                                        }}
+                                        title={`กลุ่ม ${group.label} (${group.total})`}
+                                    >
+                                        <span>{group.label}</span>
+                                        <span className="quick-unit-group-total">{group.total}</span>
+                                    </span>
+                                    <div className="quick-unit-chips">
+                                        {group.items.map(([key, count]) => {
+                                            const isActive = pendingUnitFilter === key;
+                                            const isClear = pendingUnitAllDone?.[key] === true;
+                                            const isUserUnit = Boolean(userPendingUnit && userPendingUnit === key);
+                                            const displayLabel = String(key).replace(/^Stock\s*/i, '').trim() || key;
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    className={`quick-unit-chip ${isActive ? 'active' : ''} ${isClear ? 'clear' : ''} ${isUserUnit ? 'is-user-unit' : ''}`}
+                                                    onClick={() => onPendingUnitChange(isActive ? '' : key)}
+                                                    title={isUserUnit ? `หน่วยงานของคุณ (${key})` : `กรองค้างหน่วยงาน: ${key}`}
+                                                >
+                                                    {isUserUnit && <i className="fas fa-user quick-unit-user-icon" aria-hidden="true"></i>}
+                                                    <span>{displayLabel}</span>
+                                                    <span className="quick-unit-count">{count}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             );
                         })}
                     </div>

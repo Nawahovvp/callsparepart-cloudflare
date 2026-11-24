@@ -72,8 +72,15 @@ export const DEPT_GROUPS = [
     { key: 'จัดส่ง', label: 'จัดส่ง', test: (val) => /จัดส่ง/i.test(val) },
 ];
 
+export const DEFAULT_VISIBLE_DEPT_GROUPS = ['Stock', 'จัดซื้อ'];
+export const DEFAULT_DEPT_GROUPS = ['Stock'];
+
 export function matchesDeptGroup(pendingUnit, groupKey) {
     if (!groupKey) return true;
+    if (Array.isArray(groupKey)) {
+        if (groupKey.length === 0) return true;
+        return groupKey.some((key) => matchesDeptGroup(pendingUnit, key));
+    }
     const g = DEPT_GROUPS.find(item => item.key === groupKey);
     if (!g) return false;
     return g.test(String(pendingUnit || ''));
