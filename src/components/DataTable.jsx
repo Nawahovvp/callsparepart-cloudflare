@@ -1,6 +1,31 @@
 import React from 'react';
-import { TABLE_COLUMNS, formatStockAnswerLabel } from '../utils/helpers';
+import { TABLE_COLUMNS, formatStockAnswerLabel, getDeptGroups } from '../utils/helpers';
 import { getCusLogo } from '../utils/cusLogos';
+
+const NON_STOCK_UNIT_COLORS = {
+    วิศวกรรม: { bg: '#f3e8ff', border: '#c4b5fd', color: '#5b21b6' },
+    Repair: { bg: '#fff7ed', border: '#fdba74', color: '#c2410c' },
+    จัดซื้อ: { bg: '#ecfdf5', border: '#6ee7b7', color: '#047857' },
+    ลูกค้า: { bg: '#fdf2f8', border: '#f9a8d4', color: '#be185d' },
+    Sale: { bg: '#f5f3ff', border: '#c4b5fd', color: '#6d28d9' },
+    จัดส่ง: { bg: '#f1f5f9', border: '#cbd5e1', color: '#334155' },
+    อื่นๆ: { bg: '#fef3c7', border: '#fcd34d', color: '#92400e' }
+};
+
+function getNonStockUnitStyle(unit) {
+    const text = String(unit || '').trim();
+    if (!text || text === '-' || /Stock/i.test(text)) return null;
+    const groupKey = getDeptGroups(text)[0] || 'อื่นๆ';
+    return NON_STOCK_UNIT_COLORS[groupKey] || NON_STOCK_UNIT_COLORS['อื่นๆ'];
+}
+
+function isBkkTeamPlantMismatch(pendingUnit, teamPlantCleaned) {
+    const unit = String(pendingUnit || '').trim();
+    const tp = String(teamPlantCleaned || '').trim();
+    if (unit !== 'Stock กทม' && unit !== 'กทม') return false;
+    if (!tp || tp === '-') return false;
+    return tp !== 'กทม' && !/^SA(\s|$)/i.test(tp);
+}
 
 const HIDDEN_COLUMN_KEYS = new Set(['StockStartDate', 'Answer1', 'IDPlant', 'Equipment']);
 const COLUMNS = TABLE_COLUMNS.filter(({ key }) => !HIDDEN_COLUMN_KEYS.has(key));
@@ -255,12 +280,40 @@ export default function DataTable({
                                         {spans['Team'] > 0 && (
                                             <td data-column="Team" {...mergedProps('Team')}>{row['Team']}</td>
                                         )}
-                                        {spans['TeamPlant'] > 0 && (
-                                            <td data-column="TeamPlant" {...mergedProps('TeamPlant')}>{cleanTeamPlant(row['TeamPlant'])}</td>
-                                        )}
-                                        {spans['ค้างหน่วยงาน'] > 0 && (
-                                            <td data-column="ค้างหน่วยงาน" {...mergedProps('ค้างหน่วยงาน')}>{row['ค้างหน่วยงาน']}</td>
-                                        )}
+                                        {spans['TeamPlant'] > 0 && (() => {
+                                            const isMismatchTP = isBkkTeamPlantMismatch(pendingUnit, teamPlantCleaned);
+                                            return (
+                                                <td data-column="TeamPlant" {...mergedProps('TeamPlant')}>
+                                                    {isMismatchTP ? (
+                                                        <span
+                                                            className="teamplant-mismatch-pill"
+                                                            title="ค้างหน่วยงาน กทม แต่ศูนย์พื้นที่ไม่ใช่ กทม หรือ SA"
+                                                        >
+                                                            {teamPlantCleaned}
+                                                        </span>
+                                                    ) : teamPlantCleaned}
+                                                </td>
+                                            );
+                                        })()}
+                                        {spans['ค้างหน่วยงาน'] > 0 && (() => {
+                                            const nonStockStyle = getNonStockUnitStyle(row['ค้างหน่วยงาน']);
+                                            return (
+                                                <td data-column="ค้างหน่วยงาน" {...mergedProps('ค้างหน่วยงาน')}>
+                                                    {nonStockStyle ? (
+                                                        <span
+                                                            className="non-stock-unit-pill"
+                                                            style={{
+                                                                backgroundColor: nonStockStyle.bg,
+                                                                borderColor: nonStockStyle.border,
+                                                                color: nonStockStyle.color
+                                                            }}
+                                                        >
+                                                            {row['ค้างหน่วยงาน']}
+                                                        </span>
+                                                    ) : row['ค้างหน่วยงาน']}
+                                                </td>
+                                            );
+                                        })()}
                                         {spans['Ticket Number'] > 0 && (
                                             <td data-column="Ticket Number" {...mergedProps('Ticket Number')}>
                                                 {row['Ticket Number']}
@@ -461,7 +514,28 @@ export default function DataTable({
 
                                 <div className="deck-unit-row">
                                     <span className="deck-unit">
-                                        {teamPlantCleaned} → <strong>{head['ค้างหน่วยงาน']}</strong>
+                                        {isBkkTeamPlantMismatch(head['ค้างหน่วยงาน'], teamPlantCleaned) ? (
+                                            <span
+                                                className="teamplant-mismatch-pill"
+                                                title="ค้างหน่วยงาน กทม แต่ศูนย์พื้นที่ไม่ใช่ กทม หรือ SA"
+                                            >
+                                                {teamPlantCleaned}
+                                            </span>
+                                        ) : teamPlantCleaned} → {(() => {
+                                            const nonStockStyle = getNonStockUnitStyle(head['ค้างหน่วยงาน']);
+                                            return nonStockStyle ? (
+                                                <span
+                                                    className="non-stock-unit-pill"
+                                                    style={{
+                                                        backgroundColor: nonStockStyle.bg,
+                                                        borderColor: nonStockStyle.border,
+                                                        color: nonStockStyle.color
+                                                    }}
+                                                >
+                                                    {head['ค้างหน่วยงาน']}
+                                                </span>
+                                            ) : <strong>{head['ค้างหน่วยงาน']}</strong>;
+                                        })()}
                                         {head['Team'] ? ` (${head['Team']})` : ''}
                                     </span>
                                 </div>

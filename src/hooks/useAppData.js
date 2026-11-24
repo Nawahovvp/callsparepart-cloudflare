@@ -266,6 +266,7 @@ export function useAppData(isLoggedIn = true) {
 
             const cleanTP = getCleanTeamPlant(row["TeamPlant"]);
             const teamPlantCardKey = getTeamPlantCardKey(row["TeamPlant"]);
+            const hasSearchTerm = Boolean(searchTerm && searchTerm.trim());
 
             // TeamPlant filter
             if (!isExcluded('teamPlant') && teamPlantFilter && teamPlantCardKey !== teamPlantFilter) return false;
@@ -285,8 +286,8 @@ export function useAppData(isLoggedIn = true) {
             // Company (Cus) filter
             if (!isExcluded('company') && companyFilter && String(row["Company"] || "").trim() !== companyFilter) return false;
 
-            // Search term
-            if (searchTerm) {
+            // Search term (filters within active filters; searches all data when no filter is active)
+            if (hasSearchTerm) {
                 const keyword = searchTerm.toLowerCase().trim();
                 const fields = [
                     row["DayRepair"], row["DateTime"], row["Company"], row["Ticket Number"],
@@ -297,8 +298,7 @@ export function useAppData(isLoggedIn = true) {
                     row["QtyPlant"], row["OtherPlant"], row["คลังตอบ"],
                     row["UserAns"], row["วันที่ตอบ"], row["StatusCall"]
                 ];
-                const match = fields.some(f => f && String(f).toLowerCase().includes(keyword));
-                if (!match) return false;
+                if (!fields.some(f => f && String(f).toLowerCase().includes(keyword))) return false;
             }
 
             const hasSelectedPendingUnit = Array.isArray(pendingUnitFilter)
@@ -306,7 +306,7 @@ export function useAppData(isLoggedIn = true) {
                 : Boolean(pendingUnitFilter);
 
             if (!isExcluded('gm') && gmFilter && row.GM !== gmFilter) return false;
-            if (!isExcluded('dept') && !teamPlantFilter && !hasSelectedPendingUnit && deptGroupFilter && !matchesDeptGroup(row["ค้างหน่วยงาน"], deptGroupFilter)) return false;
+            if (!isExcluded('dept') && !teamPlantFilter && !hasSelectedPendingUnit && !hasSearchTerm && deptGroupFilter && !matchesDeptGroup(row["ค้างหน่วยงาน"], deptGroupFilter)) return false;
 
             return true;
         });

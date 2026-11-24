@@ -496,7 +496,85 @@ function sanitizeCallQuantity(val) {
     const str = String(val).replace(/,/g, '').trim();
     if (!str || str === "-") return "1";
     if (/^\d{2}\.\d{2}$/.test(str) || /^\d{8}$/.test(str)) return "1";
-    return str;
+    const num = Number(str);
+    if (!Number.isFinite(num) || num <= 0 || num > 500) return "1";
+    return String(num);
+}
+
+function parseValidQuantity(val) {
+    if (val === undefined || val === null) return "";
+    const str = String(val).replace(/,/g, '').trim();
+    if (!str || str === "-" || /^\d{2}\.\d{2}$/.test(str) || /^\d{8}$/.test(str)) return "";
+    const num = Number(str);
+    if (!Number.isFinite(num) || num <= 0 || num > 500) return "";
+    return String(num);
+}
+
+function cleanTimelineTextForQuantity(text) {
+    return String(text || "")
+        .replace(/\b\d{2}\.\d{2}\s+\d{2}:\d{2}\b/g, ' ')
+        .replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, ' ')
+        .replace(/\b\d+\s*[xX×*]\s*\d+\s*(?:mm|cm|m)?\.?/gi, ' ')
+        .replace(/\b\d+\s*[MY]\b/gi, ' ')
+        .replace(/(?:ใช้\s*Code\s*นี้มี|ในคลังมี|คงเหลือ|สต๊อก|สต็อก|มีของ|มีอยู่|มี)\s*[\d,]+\s*(?:ชิ้น|อัน|ตัว|เส้น|ชุด|pcs?|ea)?/gi, ' ');
+}
+
+function extractQtyFromTimelineEvent(eventText) {
+    if (!eventText || /ของเข้าแล้ว\s*แจ้งช่างเบิก/i.test(eventText)) return "";
+    const cleaned = cleanTimelineTextForQuantity(eventText);
+
+    const patterns = [
+        /จำนวน\s*[:=]?\s*([\d,]+)/i,
+        /เท่ากับ\s*([\d,]+)/i,
+        /=\s*(\d{1,3})\s*(?:ชิ้น|ตัว|อัน|เส้น|ชุด|กล่อง|คู่|แผง|แผ่น|ม้วน|ลูก|ใบ|หลอด|ขวด|ถุง|เมตร|pcs?|ea|set|unit)?(?!\d)/i,
+        /(\d{1,3})\s*(?:ชิ้น|ตัว|อัน|เส้น|ชุด|กล่อง|คู่|แผง|แผ่น|ม้วน|ลูก|ใบ|หลอด|ขวด|ถุง|เมตร|pcs?|ea|set|unit)(?![a-zA-Z0-9])/i,
+        /(?:^|\s|[)\]])[xX×*]\s*(\d{1,3})(?!\d|\s*(?:mm|cm|m)\b)/
+    ];
+
+    for (const rx of patterns) {
+        const match = cleaned.match(rx);
+        if (match) {
+            const valid = parseValidQuantity(match[1]);
+            if (valid) return valid;
+        }
+    }
+    return "";
+}
+
+function extractTimelineQuantities(details) {
+    const text = String(details || "").trim();
+    if (!text) return { latestQty: "", byMaterial: new Map() };
+
+    const events = text
+        .split(/(?=\b\d{2}\.\d{2}\s+\d{2}:\d{2}\b)/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    const orderedNewestFirst = events.length > 0 ? [...events].reverse() : [text];
+
+    let latestQty = "";
+    const byMaterial = new Map();
+
+    for (const eventText of orderedNewestFirst) {
+        if (!latestQty) {
+            const q = extractQtyFromTimelineEvent(eventText);
+            if (q) latestQty = q;
+        }
+
+        if (/ของเข้าแล้ว\s*แจ้งช่างเบิก/i.test(eventText)) continue;
+        const cleaned = cleanTimelineTextForQuantity(eventText);
+        const matQtyMatches = cleaned.matchAll(
+            /(?:^|\D)(300\d{5})\)?[^\S\r\n]*(?:(?:จำนวน\s*[:=]?|=|เท่ากับ|[xX×*])[^\S\r\n]*|[^\S\r\n]+)(\d{1,3})(?![\dMYmy]|[^\S\r\n]*(?:mm|cm|m)\b)/gi
+        );
+        for (const match of matQtyMatches) {
+            const matCode = match[1];
+            const valid = parseValidQuantity(match[2]);
+            if (valid && !byMaterial.has(matCode)) {
+                byMaterial.set(matCode, valid);
+            }
+        }
+    }
+
+    return { latestQty, byMaterial };
 }
 
 export function processRawData(
@@ -542,10 +620,12 @@ export function processRawData(
                 ? Math.max(0, Math.floor((Date.now() - parsedReplyDate.getTime()) / (1000 * 60 * 60 * 24)))
                 : 0;
             const details = String(row["รายละเอียด"] || row.TimeLine || "");
-            const detailQuantity = details.match(/จำนวน\s*:\s*([\d,]+)/i)?.[1]?.replace(/,/g, '');
-            const callMaterialQuantity = [row["จำนวน"], row.Quantity].find(value =>
+            const timelineQuantities = extractTimelineQuantities(details);
+            const detailQuantity = timelineQuantities.latestQty;
+            const rawCallMaterialQuantity = [row["จำนวน"], row.Quantity].find(value =>
                 value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim() !== "-"
             );
+            const callMaterialQuantity = parseValidQuantity(rawCallMaterialQuantity);
             const isCallMaterialRow = Object.prototype.hasOwnProperty.call(row, "Create Date")
                 || Object.prototype.hasOwnProperty.call(row, "Store Name");
             const description = nawaDescriptionByMaterial.get(material);
@@ -559,8 +639,9 @@ export function processRawData(
                 "คลังตอบ": row["คลังตอบ"] || "",
                 UserAns: row["ผู้ตอบ"] || row.UserAns,
                 TimeLine: details,
-                "จำนวน": sanitizeCallQuantity(callMaterialQuantity ?? detailQuantity ?? "1"),
-                _callMaterialQuantity: callMaterialQuantity ? sanitizeCallQuantity(callMaterialQuantity) : "",
+                "จำนวน": sanitizeCallQuantity(callMaterialQuantity || detailQuantity || "1"),
+                _callMaterialQuantity: callMaterialQuantity,
+                _quantitiesByMaterial: timelineQuantities.byMaterial,
                 PendingStockDays: pendingStockDays,
                 Description: description || (isCallMaterialRow ? "" : row.Description || row.Discription || row.Desc || "")
             };
@@ -569,10 +650,7 @@ export function processRawData(
             const currentMaterial = normalizeMaterial(row.Material);
             const details = String(row["รายละเอียด"] || row.TimeLine || "");
             const labeledCode = details.match(/Material\s*Code\s*:\s*(\d+)/i)?.[1];
-            const quantitiesByMaterial = new Map(
-                [...details.matchAll(/(?:^|\D)(300\d{5})[^\S\r\n]+([\d,]+(?:\.\d+)?)[^\S\r\n]*(?:PCS?|EA)?/gi)]
-                    .map(match => [match[1], sanitizeCallQuantity(match[2])])
-            );
+            const quantitiesByMaterial = row._quantitiesByMaterial instanceof Map ? row._quantitiesByMaterial : new Map();
             let materials = [];
 
             if (currentMaterial && currentMaterial !== "-") {
@@ -996,6 +1074,17 @@ export function processRawData(
             r.StatusX = "ขอซื้อขอซ่อม";
             r.StatusCall = "ขอซื้อขอซ่อม";
             r.StatusGroup = "ขอซื้อขอซ่อม";
+        }
+    });
+
+    // 6. Clear Material if Description is still empty after all calculations
+    enrichedData.forEach(r => {
+        const mat = (r["Material"] || "").toString().trim();
+        const desc = (r["Description"] || "").toString().trim();
+        if (mat !== "" && (desc === "" || desc === "-")) {
+            r._rawMaterial = r._rawMaterial ?? r["Material"];
+            r._emptyDescMaterialCleared = true;
+            r["Material"] = "";
         }
     });
 

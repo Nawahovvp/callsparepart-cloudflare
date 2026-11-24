@@ -179,60 +179,238 @@ export function GraphModal({ isOpen, onClose, data = [], onFilterPendingUnit }) 
     );
 }
 
-// ===== Summary Modal (Pivot: TeamPlant × StatusCall) =====
-export function SummaryModal({ isOpen, onClose, data = [] }) {
+// ===== Summary Modal (Grouped: Material ASC -> Description -> TeamPlant -> Team -> Eng -> Total Qty + Allocation Calculator) =====
+export function SummaryModal({ isOpen, onClose, data = [], engData = [], onEngClick }) {
+    const [allocMaterial, setAllocMaterial] = useState('');
+    const [allocQty, setAllocQty] = useState('');
+
+    const engByMatTeam = useMemo(() => {
+        const map = new Map();
+        if (Array.isArray(engData)) {
+            engData.forEach((sheet) => {
+                if (!Array.isArray(sheet?.data)) return;
+                sheet.data.forEach((engRow) => {
+                    const eMat = normalizeMaterial(engRow?.["Material"] || "");
+                    const eTeam = String(engRow?.["หน่วยงาน"] || engRow?.["Team"] || "").trim();
+                    const eQty = parseFloat(String(engRow?.["จำนวน"] ?? engRow?.["Qty"] ?? "0").replace(/,/g, "")) || 0;
+                    if (!eMat || !eTeam || eQty <= 0) return;
+
+                    const key = `${eMat}__${eTeam}`;
+                    if (!map.has(key)) {
+                        map.set(key, { qty: 0, techs: [] });
+                    }
+                    const entry = map.get(key);
+                    entry.qty += eQty;
+                    const name = String(engRow?.["ชื่อช่าง"] || engRow?.["Name"] || engRow?.["Employee ID"] || "").trim();
+                    if (name) {
+                        entry.techs.push(`${name} (${eQty})`);
+                    }
+                });
+            });
+        }
+        return map;
+    }, [engData]);
+
+    const availableMaterials = useMemo(() => {
+        const map = new Map();
+        (data || []).forEach((row) => {
+            const raw = String(row["Material"] || "").replace(/^'/, '').trim();
+            const key = normalizeMaterial(raw);
+            if (key && !map.has(key)) {
+                map.set(key, { code: raw, desc: String(getDesc(row) || "").trim() });
+            }
+        });
+        return [...map.values()].sort((a, b) =>
+            a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' })
+        );
+    }, [data]);
+
+    const normAllocMat = normalizeMaterial(allocMaterial);
+    const parsedAllocQty = parseFloat(String(allocQty).replace(/,/g, ''));
+    const isAllocationMode = Boolean(normAllocMat && !isNaN(parsedAllocQty) && parsedAllocQty > 0);
+
     const summaryData = useMemo(() => {
         if (!data || data.length === 0) return null;
 
-        const ticketCounts = {};
-        const pivotData = {};
-        const teamPlantSet = new Set();
-        const statusCallSet = new Set();
-        let waitingResponseCount = 0;
-        let overdueCount = 0;
+        const filteredSource = normAllocMat
+            ? data.filter((row) => {
+                const mat = normalizeMaterial(row["Material"] || "");
+                return mat && mat.includes(normAllocMat);
+            })
+            : data;
 
-        data.forEach(row => {
-            const ticket = row["Ticket Number"];
-            if (ticketCounts[ticket]) return;
-            ticketCounts[ticket] = true;
+        const ticketSet = new Set();
+        const teamSet = new Set();
+        const matMap = new Map();
+        let grandTotalQty = 0;
 
-            const tp = getCleanTeamPlant(row["TeamPlant"] || "ไม่ระบุ");
-            const status = row["StatusCall"] || "ไม่ระบุ";
-            teamPlantSet.add(tp);
-            statusCallSet.add(status);
+        filteredSource.forEach((row) => {
+            const ticket = String(row["Ticket Number"] || "").trim();
+            if (ticket) ticketSet.add(ticket);
 
-            if (!pivotData[tp]) pivotData[tp] = {};
-            pivotData[tp][status] = (pivotData[tp][status] || 0) + 1;
+            const tp = getCleanTeamPlant(row["TeamPlant"]) || "ไม่ระบุ";
+            const team = String(row["Team"] || "").trim() || "ไม่ระบุ";
+            teamSet.add(team);
 
-            if (row['คลังตอบ'] === 'รอตรวจสอบ') waitingResponseCount++;
-            if ((parseFloat(row['DayRepair']) || 0) > 7) overdueCount++;
+            const rawMaterial = String(row["Material"] || "").replace(/^'/, '').trim();
+            const matKey = normalizeMaterial(rawMaterial) || rawMaterial || "-";
+            const displayMaterial = rawMaterial || "-";
+            const description = String(getDesc(row) || "").trim() || "-";
+            const qty = parseFloat(String(row["จำนวน"] ?? "0").replace(/,/g, "")) || 0;
+
+            grandTotalQty += qty;
+
+            if (!matMap.has(matKey)) {
+                matMap.set(matKey, {
+                    matKey,
+                    material: displayMaterial,
+                    description,
+                    totalQty: 0,
+                    entries: new Map()
+                });
+            }
+            const matEntry = matMap.get(matKey);
+            if ((matEntry.description === "-" || !matEntry.description) && description !== "-") {
+                matEntry.description = description;
+            }
+            matEntry.totalQty += qty;
+
+            const entryKey = `${tp}__${team}`;
+            if (!matEntry.entries.has(entryKey)) {
+                matEntry.entries.set(entryKey, { teamPlant: tp, team, qty: 0, sampleRow: row });
+            }
+            matEntry.entries.get(entryKey).qty += qty;
         });
 
-        const teamPlants = [...teamPlantSet];
-        const statusCalls = [...statusCallSet].sort();
-        const totalCalls = Object.keys(ticketCounts).length;
+        const sortedMaterials = [...matMap.values()].sort((a, b) =>
+            a.material.localeCompare(b.material, undefined, { numeric: true, sensitivity: 'base' })
+        );
 
-        // Sort team plants by total descending
-        const sorted = teamPlants.map(tp => {
-            const total = statusCalls.reduce((s, st) => s + (pivotData[tp]?.[st] || 0), 0);
-            return { tp, total };
-        }).sort((a, b) => b.total - a.total);
-
-        // Calculate totals for each status
-        const columnTotals = statusCalls.map(s => {
-            return teamPlants.reduce((sum, tp) => sum + (pivotData[tp]?.[s] || 0), 0);
+        const flatRows = [];
+        sortedMaterials.forEach((matObj, matIdx) => {
+            const subEntries = [...matObj.entries.values()].sort((a, b) =>
+                a.teamPlant.localeCompare(b.teamPlant, 'th', { numeric: true, sensitivity: 'base' })
+                || a.team.localeCompare(b.team, 'th', { numeric: true, sensitivity: 'base' })
+            );
+            subEntries.forEach((sub, subIdx) => {
+                const engMatch = engByMatTeam.get(`${matObj.matKey}__${sub.team}`);
+                flatRows.push({
+                    key: `${matObj.material}_${sub.teamPlant}_${sub.team}_${subIdx}`,
+                    matIdx,
+                    material: matObj.material,
+                    description: matObj.description,
+                    matTotalQty: matObj.totalQty,
+                    matRowSpan: subIdx === 0 ? subEntries.length : 0,
+                    teamPlant: sub.teamPlant,
+                    team: sub.team,
+                    teamEngQty: engMatch ? engMatch.qty : 0,
+                    teamEngTitle: engMatch?.techs?.length ? engMatch.techs.join(', ') : '',
+                    sampleRow: sub.sampleRow,
+                    totalQty: sub.qty
+                });
+            });
         });
 
         return {
-            totalCalls,
-            waitingResponseCount,
-            overdueCount,
-            statusCalls,
-            sorted,
-            pivotData,
-            columnTotals
+            totalCalls: ticketSet.size,
+            teamCount: teamSet.size,
+            totalMaterialCount: sortedMaterials.length,
+            grandTotalQty,
+            flatRows
         };
-    }, [data]);
+    }, [data, engByMatTeam, normAllocMat]);
+
+    const allocationData = useMemo(() => {
+        if (!isAllocationMode || !data || data.length === 0) return null;
+
+        // Prefer exact material match if any exists, otherwise substring match
+        const exactRows = data.filter((row) => normalizeMaterial(row["Material"] || "") === normAllocMat);
+        const matchedRows = exactRows.length > 0
+            ? exactRows
+            : data.filter((row) => normalizeMaterial(row["Material"] || "").includes(normAllocMat));
+
+        // Sort by ผ่านมา (DayRepair) descending, then Ticket Number ascending
+        const sortedRows = [...matchedRows].sort((a, b) => {
+            const dayA = parseFloat(a["DayRepair"]) || 0;
+            const dayB = parseFloat(b["DayRepair"]) || 0;
+            if (dayB !== dayA) return dayB - dayA;
+            return String(a["Ticket Number"] || "").localeCompare(String(b["Ticket Number"] || ""));
+        });
+
+        const remainingEng = new Map();
+        engByMatTeam.forEach((val, key) => remainingEng.set(key, val.qty));
+
+        let remainingPool = parsedAllocQty;
+        let totalAllocated = 0;
+        let totalDeductedEng = 0;
+        let totalRequested = 0;
+        const rows = [];
+
+        for (const row of sortedRows) {
+            const matKey = normalizeMaterial(row["Material"] || "");
+            const material = String(row["Material"] || "").replace(/^'/, '').trim() || "-";
+            const description = String(getDesc(row) || "").trim() || "-";
+            const storeName = String(row["Brand"] || row["Store Name"] || "").trim() || "-";
+            const ticket = String(row["Ticket Number"] || "").trim() || "-";
+            const tp = getCleanTeamPlant(row["TeamPlant"]) || "ไม่ระบุ";
+            const team = String(row["Team"] || "").trim() || "ไม่ระบุ";
+            const dayRepair = !isNaN(parseFloat(row["DayRepair"])) ? Math.floor(parseFloat(row["DayRepair"])) : 0;
+            const reqQty = parseFloat(String(row["จำนวน"] ?? "1").replace(/,/g, "")) || 1;
+
+            const engKey = `${matKey}__${team}`;
+            const availEng = remainingEng.get(engKey) || 0;
+            const deductedEng = Math.min(reqQty, availEng);
+            const netNeed = Math.max(0, reqQty - deductedEng);
+
+            if (netNeed > 0 && remainingPool <= 0) {
+                continue;
+            }
+
+            if (deductedEng > 0) {
+                remainingEng.set(engKey, availEng - deductedEng);
+            }
+
+            const allocatedQty = netNeed > 0 ? Math.min(netNeed, remainingPool) : 0;
+            remainingPool -= allocatedQty;
+
+            totalRequested += reqQty;
+            totalDeductedEng += deductedEng;
+            totalAllocated += allocatedQty;
+
+            let allocStatus = 'ได้เบิกครบ';
+            if (netNeed === 0) allocStatus = 'ใช้จากช่างในทีม';
+            else if (allocatedQty < netNeed) allocStatus = `ได้เบิกบางส่วน (${allocatedQty}/${netNeed})`;
+
+            rows.push({
+                key: `${ticket}_${matKey}_${rows.length}`,
+                ticket,
+                storeName,
+                dayRepair,
+                material,
+                description,
+                teamPlant: tp,
+                team,
+                reqQty,
+                deductedEng,
+                allocatedQty,
+                allocStatus,
+                sampleRow: row
+            });
+
+            if (remainingPool <= 0) break;
+        }
+
+        return {
+            inputQty: parsedAllocQty,
+            totalMatchedTickets: sortedRows.length,
+            allocatedTickets: rows.length,
+            totalRequested,
+            totalDeductedEng,
+            totalAllocated,
+            remainingPool,
+            rows
+        };
+    }, [isAllocationMode, data, normAllocMat, parsedAllocQty, engByMatTeam]);
 
     const handlePrint = () => {
         const printContent = document.getElementById('summary-print-area');
@@ -240,214 +418,415 @@ export function SummaryModal({ isOpen, onClose, data = [] }) {
         const w = window.open('', '_blank');
         w.document.write(`<html><head><title>สรุปข้อมูล Call ค้าง</title>
             <style>
-                body { font-family: 'Prompt', sans-serif; padding: 20px; }
-                .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
-                .stat-card { padding: 15px; border: 1px solid #ddd; border-radius: 10px; text-align: center; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-                th { background: #f8f9fa; font-weight: bold; }
-                .text-left { text-align: left; }
-                .total-row { font-weight: bold; background: #eee; }
+                body { font-family: 'Prompt', sans-serif; padding: 14px; color: #1e293b; }
+                .summary-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+                .stat-card { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; }
+                table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; vertical-align: middle; }
+                th { background: #f1f5f9; font-weight: 700; }
+                th:last-child, td:last-child { text-align: right; }
             </style>
         </head><body>${printContent.innerHTML}</body></html>`);
         w.document.close();
         w.print();
     };
 
+    const handleExportCsv = () => {
+        const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+        const dateStr = new Date().toISOString().split('T')[0];
+        let lines = [];
+        let filename = `Call_Summary_${dateStr}.csv`;
+
+        if (isAllocationMode && allocationData?.rows?.length) {
+            const headers = ['ลำดับ', 'ศูนย์พื้นที่', 'Material', 'Team', 'Store Name', 'ผ่านมา(วัน)', 'ขอเบิก', 'หักช่าง', 'ได้เบิก', 'หมายเหตุ'];
+            lines = [
+                headers.map(escapeCsv).join(','),
+                ...allocationData.rows.map((r, idx) => [
+                    idx + 1,
+                    r.teamPlant,
+                    r.material,
+                    r.team,
+                    r.storeName,
+                    r.dayRepair,
+                    r.reqQty,
+                    r.deductedEng,
+                    r.allocatedQty,
+                    r.allocStatus
+                ].map(escapeCsv).join(','))
+            ];
+            filename = `Call_Allocation_${normAllocMat}_${dateStr}.csv`;
+        } else if (summaryData?.flatRows?.length) {
+            const headers = ['Material', 'Description', 'ศูนย์พื้นที่', 'Team', 'ช่าง', 'จำนวนรวม'];
+            lines = [
+                headers.map(escapeCsv).join(','),
+                ...summaryData.flatRows.map((r) => [
+                    r.material,
+                    r.description,
+                    r.teamPlant,
+                    r.team,
+                    r.teamEngQty > 0 ? r.teamEngQty : '',
+                    r.totalQty
+                ].map(escapeCsv).join(','))
+            ];
+        } else {
+            return;
+        }
+
+        const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     if (!isOpen) return null;
 
     return (
         <div className="modal" onClick={(e) => e.target.className === 'modal' && onClose()}>
-            <div className="premium-modal-content" style={{ maxWidth: '1200px' }}>
-                <div className="premium-modal-header">
-                    <h3><i className="fas fa-chart-pie" style={{ marginRight: 10 }}></i> สรุปข้อมูล Call ค้าง</h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <button className="action-button premium-button" onClick={handlePrint}>
+            <div className="premium-modal-content" style={{ maxWidth: '960px' }}>
+                <div className="premium-modal-header" style={{ padding: '12px 18px' }}>
+                    <h3 style={{ fontSize: '16px' }}><i className="fas fa-chart-pie" style={{ marginRight: 8 }}></i> สรุปข้อมูล Call ค้าง (ตามตารางที่กรอง)</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            type="button"
+                            className="action-button premium-button"
+                            onClick={handleExportCsv}
+                            disabled={!summaryData?.flatRows?.length}
+                            title="Export CSV"
+                            aria-label="Export CSV"
+                            style={{ padding: '6px 10px', fontSize: '14px' }}
+                        >
+                            <i className="fas fa-file-csv"></i>
+                        </button>
+                        <button
+                            type="button"
+                            className="action-button premium-button"
+                            onClick={handlePrint}
+                            title="พิมพ์สรุป"
+                            aria-label="พิมพ์สรุป"
+                            style={{ padding: '6px 12px', fontSize: '12.5px' }}
+                        >
                             <i className="fas fa-print"></i> พิมพ์สรุป
                         </button>
                         <span className="premium-modal-close" onClick={onClose}>×</span>
                     </div>
                 </div>
-                <div className="premium-modal-body">
+                <div className="premium-modal-body" style={{ padding: '14px 18px' }}>
                     {!summaryData ? (
-                        <div style={{ textAlign: 'center', padding: '40px' }}>ไม่มีข้อมูล</div>
+                        <div style={{ textAlign: 'center', padding: '32px' }}>ไม่มีข้อมูล</div>
                     ) : (
                         <div id="summary-print-area">
+                            {/* Allocation Calculator Bar */}
+                            <div style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '9px 12px',
+                                marginBottom: '12px',
+                                borderRadius: '10px',
+                                background: '#f8fbff',
+                                border: '1px solid #bfdbfe'
+                            }}>
+                                <span style={{ fontSize: '12px', fontWeight: 700, color: '#1e3a8a', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+                                    <i className="fas fa-calculator" style={{ color: '#2563eb' }}></i>
+                                    คำนวณจัดสรรเบิก:
+                                </span>
+                                <input
+                                    type="text"
+                                    list="summary-material-list"
+                                    placeholder="กรอก Material..."
+                                    value={allocMaterial}
+                                    onChange={(e) => setAllocMaterial(e.target.value)}
+                                    style={{
+                                        padding: '5px 10px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #cbd5e1',
+                                        fontSize: '12.5px',
+                                        width: '155px',
+                                        fontWeight: 600
+                                    }}
+                                />
+                                <datalist id="summary-material-list">
+                                    {availableMaterials.map((m) => (
+                                        <option key={m.code} value={m.code}>{m.desc}</option>
+                                    ))}
+                                </datalist>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    placeholder="จำนวน"
+                                    value={allocQty}
+                                    onChange={(e) => setAllocQty(e.target.value)}
+                                    style={{
+                                        padding: '5px 10px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #cbd5e1',
+                                        fontSize: '12.5px',
+                                        width: '92px',
+                                        fontWeight: 700
+                                    }}
+                                />
+                                {(allocMaterial || allocQty) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { setAllocMaterial(''); setAllocQty(''); }}
+                                        style={{
+                                            padding: '5px 10px',
+                                            borderRadius: '8px',
+                                            border: '1px solid #cbd5e1',
+                                            background: '#ffffff',
+                                            color: '#475569',
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <i className="fas fa-times" style={{ marginRight: 4 }}></i>ล้าง
+                                    </button>
+                                )}
+                                {isAllocationMode && allocationData && (
+                                    <span style={{ fontSize: '12px', color: '#0f766e', fontWeight: 700, marginLeft: 'auto' }}>
+                                        จัดสรรได้ {allocationData.totalAllocated.toLocaleString()} / {allocationData.inputQty.toLocaleString()} ชิ้น
+                                        {allocationData.totalDeductedEng > 0 ? ` (หักช่าง ${allocationData.totalDeductedEng.toLocaleString()})` : ''}
+                                        {allocationData.remainingPool > 0 ? ` • คงเหลือ ${allocationData.remainingPool.toLocaleString()}` : ''}
+                                    </span>
+                                )}
+                            </div>
+
                             <div className="summary-stat-grid" style={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                                gap: '20px',
-                                marginBottom: '25px'
+                                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                                gap: '10px',
+                                marginBottom: '12px'
                             }}>
                                 <div className="stat-card" style={{
-                                    background: 'linear-gradient(135deg, #007bff, #0056b3)',
+                                    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                                     color: 'white',
-                                    padding: '20px',
-                                    borderRadius: '16px',
+                                    padding: '10px 12px',
+                                    borderRadius: '10px',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '20px',
-                                    boxShadow: '0 8px 16px rgba(0,123,255,0.2)'
+                                    gap: '10px'
                                 }}>
-                                    <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
                                         <i className="fas fa-phone-alt"></i>
                                     </div>
                                     <div>
-                                        <div style={{ fontSize: '13px', opacity: 0.9 }}>จำนวน Call ทั้งหมด</div>
-                                        <div style={{ fontSize: '28px', fontWeight: '800' }}>{summaryData.totalCalls} Call</div>
+                                        <div style={{ fontSize: '11px', opacity: 0.9 }}>{isAllocationMode ? 'Ticket ที่ได้เบิก' : 'จำนวน Call'}</div>
+                                        <div style={{ fontSize: '18px', fontWeight: '800', lineHeight: 1.15 }}>
+                                            {isAllocationMode && allocationData
+                                                ? `${allocationData.allocatedTickets} / ${allocationData.totalMatchedTickets}`
+                                                : summaryData.totalCalls.toLocaleString()}
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div className="stat-card" style={{
-                                    background: 'linear-gradient(135deg, #ffc107, #e0a800)',
+                                    background: 'linear-gradient(135deg, #0d9488, #0f766e)',
                                     color: 'white',
-                                    padding: '20px',
-                                    borderRadius: '16px',
+                                    padding: '10px 12px',
+                                    borderRadius: '10px',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '20px',
-                                    boxShadow: '0 8px 16px rgba(255,193,7,0.2)'
+                                    gap: '10px'
                                 }}>
-                                    <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
-                                        <i className="fas fa-clock"></i>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
+                                        <i className={isAllocationMode ? 'fas fa-user-cog' : 'fas fa-users'}></i>
                                     </div>
                                     <div>
-                                        <div style={{ fontSize: '13px', opacity: 0.9 }}>รอตรวจสอบ (คลังตอบ)</div>
-                                        <div style={{ fontSize: '28px', fontWeight: '800' }}>{summaryData.waitingResponseCount} Call</div>
+                                        <div style={{ fontSize: '11px', opacity: 0.9 }}>{isAllocationMode ? 'หักจากช่างในทีม' : 'Material / Team'}</div>
+                                        <div style={{ fontSize: '18px', fontWeight: '800', lineHeight: 1.15 }}>
+                                            {isAllocationMode && allocationData
+                                                ? `${allocationData.totalDeductedEng.toLocaleString()} ชิ้น`
+                                                : `${summaryData.totalMaterialCount.toLocaleString()} / ${summaryData.teamCount}`}
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div className="stat-card" style={{
-                                    background: 'linear-gradient(135deg, #dc3545, #c82333)',
+                                    background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
                                     color: 'white',
-                                    padding: '20px',
-                                    borderRadius: '16px',
+                                    padding: '10px 12px',
+                                    borderRadius: '10px',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '20px',
-                                    boxShadow: '0 8px 16px rgba(220,53,69,0.2)'
+                                    gap: '10px'
                                 }}>
-                                    <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
-                                        <i className="fas fa-exclamation-triangle"></i>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
+                                        <i className="fas fa-cubes"></i>
                                     </div>
                                     <div>
-                                        <div style={{ fontSize: '13px', opacity: 0.9 }}>ค้างมากกว่า 7 วัน</div>
-                                        <div style={{ fontSize: '28px', fontWeight: '800' }}>{summaryData.overdueCount} Call</div>
+                                        <div style={{ fontSize: '11px', opacity: 0.9 }}>{isAllocationMode ? 'เบิกจ่ายจริง / คงเหลือ' : 'จำนวนรวมทั้งหมด'}</div>
+                                        <div style={{ fontSize: '18px', fontWeight: '800', lineHeight: 1.15 }}>
+                                            {isAllocationMode && allocationData
+                                                ? `${allocationData.totalAllocated.toLocaleString()} / ${allocationData.remainingPool.toLocaleString()}`
+                                                : `${summaryData.grandTotalQty.toLocaleString()} ชิ้น`}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="premium-table-container" style={{
-                                background: 'white',
-                                borderRadius: '16px',
-                                border: '1px solid #eef2f7',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                            <div style={{
+                                background: '#ffffff',
+                                borderRadius: '10px',
+                                border: '1px solid #e2e8f0',
                                 overflow: 'hidden'
                             }}>
-                                <div className="desktop-table-wrap" style={{ maxHeight: '60vh', overflow: 'auto' }}>
-                                    <table className="summary-pivot-table" style={{
-                                        width: '100%',
-                                        borderCollapse: 'separate',
-                                        borderSpacing: 0,
-                                        fontSize: '13px'
-                                    }}>
+                                <div style={{ maxHeight: '58vh', overflow: 'auto' }}>
+                                    {isAllocationMode && allocationData ? (
+                                        allocationData.rows.length === 0 ? (
+                                            <div style={{ textAlign: 'center', padding: '28px', color: '#64748b' }}>
+                                                ไม่พบรายการ Material "{allocMaterial}" ในตารางที่กรองปัจจุบัน
+                                            </div>
+                                        ) : (
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                                                <thead>
+                                                    <tr style={{ background: '#f1f5f9', color: '#1e293b' }}>
+                                                        <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 8px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'center', width: '40px' }}>#</th>
+                                                        <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 10px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'left', whiteSpace: 'nowrap' }}>ศูนย์พื้นที่</th>
+                                                        <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 10px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'left', whiteSpace: 'nowrap' }}>Material</th>
+                                                        <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 10px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'left', whiteSpace: 'nowrap' }}>Team</th>
+                                                        <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 10px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'left' }}>Store Name</th>
+                                                        <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 8px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'center', whiteSpace: 'nowrap', width: '74px' }}>ผ่านมา ▼</th>
+                                                        <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 8px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'right', whiteSpace: 'nowrap', width: '66px' }}>ขอเบิก</th>
+                                                        <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 8px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'right', whiteSpace: 'nowrap', width: '66px' }}>หักช่าง</th>
+                                                        <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 10px', borderBottom: '2px solid #cbd5e1', textAlign: 'right', whiteSpace: 'nowrap', width: '76px' }}>ได้เบิก</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {allocationData.rows.map((r, idx) => (
+                                                        <tr key={r.key} className="summary-row-hover" style={{ background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }} title={`Ticket: ${r.ticket}`}>
+                                                            <td style={{ padding: '5px 8px', borderBottom: '1px solid #edf2f7', borderRight: '1px solid #f1f5f9', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{idx + 1}</td>
+                                                            <td style={{ padding: '5px 10px', borderBottom: '1px solid #edf2f7', borderRight: '1px solid #f1f5f9', fontWeight: 600, color: '#1e3a8a', whiteSpace: 'nowrap' }}>{r.teamPlant}</td>
+                                                            <td style={{ padding: '5px 10px', borderBottom: '1px solid #edf2f7', borderRight: '1px solid #f1f5f9', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }} title={r.description}>{r.material}</td>
+                                                            <td style={{ padding: '5px 10px', borderBottom: '1px solid #edf2f7', borderRight: '1px solid #f1f5f9', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' }}>{r.team}</td>
+                                                            <td style={{ padding: '5px 10px', borderBottom: '1px solid #edf2f7', borderRight: '1px solid #f1f5f9', color: '#334155' }}>{r.storeName}</td>
+                                                            <td style={{ padding: '5px 8px', borderBottom: '1px solid #edf2f7', borderRight: '1px solid #f1f5f9', textAlign: 'center', fontWeight: 700, color: r.dayRepair > 7 ? '#dc2626' : '#334155', whiteSpace: 'nowrap' }}>{r.dayRepair} วัน</td>
+                                                            <td style={{ padding: '5px 8px', borderBottom: '1px solid #edf2f7', borderRight: '1px solid #f1f5f9', textAlign: 'right', fontWeight: 600 }}>{r.reqQty.toLocaleString()}</td>
+                                                            <td style={{ padding: '5px 8px', borderBottom: '1px solid #edf2f7', borderRight: '1px solid #f1f5f9', textAlign: 'right', fontWeight: 700, color: r.deductedEng > 0 ? '#ea580c' : '#cbd5e1' }}>
+                                                                {r.deductedEng > 0 ? r.deductedEng.toLocaleString() : '-'}
+                                                            </td>
+                                                            <td style={{ padding: '5px 10px', borderBottom: '1px solid #edf2f7', textAlign: 'right', fontWeight: 800, color: r.allocatedQty > 0 ? '#16a34a' : '#0d9488', whiteSpace: 'nowrap' }} title={r.allocStatus}>
+                                                                {r.allocatedQty > 0 ? r.allocatedQty.toLocaleString() : 'จากช่าง'}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    <tr style={{ background: '#eff6ff', fontWeight: 800 }}>
+                                                        <td colSpan={6} style={{ padding: '7px 10px', borderTop: '2px solid #93c5fd', textAlign: 'right', color: '#1e3a8a' }}>
+                                                            รวมจัดสรร ({allocationData.allocatedTickets} รายการ)
+                                                        </td>
+                                                        <td style={{ padding: '7px 8px', borderTop: '2px solid #93c5fd', textAlign: 'right', color: '#334155' }}>
+                                                            {allocationData.totalRequested.toLocaleString()}
+                                                        </td>
+                                                        <td style={{ padding: '7px 8px', borderTop: '2px solid #93c5fd', textAlign: 'right', color: '#ea580c' }}>
+                                                            {allocationData.totalDeductedEng.toLocaleString()}
+                                                        </td>
+                                                        <td style={{ padding: '7px 10px', borderTop: '2px solid #93c5fd', textAlign: 'right', color: '#16a34a' }}>
+                                                            {allocationData.totalAllocated.toLocaleString()}
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        )
+                                    ) : (
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
                                         <thead>
-                                            <tr>
-                                                <th style={{
-                                                    position: 'sticky', top: 0, left: 0, zIndex: 10,
-                                                    background: '#f8f9fa', padding: '15px 20px',
-                                                    borderBottom: '2px solid #dee2e6', textAlign: 'left',
-                                                    color: '#2d3748', minWidth: '180px'
-                                                }}>ศูนย์พื้นที่</th>
-                                                <th style={{
-                                                    position: 'sticky', top: 0, zIndex: 9,
-                                                    background: '#f8f9fa', padding: '15px 20px',
-                                                    borderBottom: '2px solid #dee2e6', textAlign: 'center',
-                                                    color: '#2d3748', fontWeight: 'bold'
-                                                }}>รวม</th>
-                                                {summaryData.statusCalls.map(status => (
-                                                    <th key={status} style={{
-                                                        position: 'sticky', top: 0, zIndex: 9,
-                                                        background: '#f8f9fa', padding: '15px 15px',
-                                                        borderBottom: '2px solid #dee2e6', textAlign: 'center',
-                                                        color: CHART_COLORS[status] || '#495057',
-                                                        whiteSpace: 'nowrap'
-                                                    }}>{status}</th>
-                                                ))}
+                                            <tr style={{ background: '#f1f5f9', color: '#1e293b' }}>
+                                                <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 10px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'left', whiteSpace: 'nowrap', width: '110px' }}>Material ▲</th>
+                                                <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 10px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'left' }}>Description</th>
+                                                <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 10px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'left', whiteSpace: 'nowrap', width: '115px' }}>ศูนย์พื้นที่</th>
+                                                <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 10px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'left', whiteSpace: 'nowrap', width: '120px' }}>Team</th>
+                                                <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 10px', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', textAlign: 'center', whiteSpace: 'nowrap', width: '70px' }}>ช่าง</th>
+                                                <th style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f1f5f9', padding: '7px 10px', borderBottom: '2px solid #cbd5e1', textAlign: 'right', whiteSpace: 'nowrap', width: '80px' }}>จำนวนรวม</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {summaryData.sorted.map(({ tp, total }, rowIndex) => (
-                                                <tr key={tp} style={{
-                                                    background: rowIndex % 2 === 0 ? '#fff' : '#fafbfc',
-                                                    transition: 'all 0.2s'
-                                                }} className="summary-row-hover">
-                                                    <td style={{
-                                                        position: 'sticky', left: 0, zIndex: 5,
-                                                        background: rowIndex % 2 === 0 ? '#fff' : '#fafbfc',
-                                                        padding: '12px 20px', borderBottom: '1px solid #edf2f7',
-                                                        fontWeight: '500', color: '#2d3748'
-                                                    }}>{tp}</td>
-                                                    <td style={{
-                                                        padding: '12px 20px', borderBottom: '1px solid #edf2f7',
-                                                        textAlign: 'center', fontWeight: 'bold', color: '#007bff'
-                                                    }}>{total || '-'}</td>
-                                                    {summaryData.statusCalls.map(status => {
-                                                        const val = summaryData.pivotData[tp]?.[status] || 0;
-                                                        return (
-                                                            <td key={status} style={{
-                                                                padding: '12px 15px', borderBottom: '1px solid #edf2f7',
-                                                                textAlign: 'center', color: val > 0 ? '#4a5568' : '#cbd5e0'
-                                                            }}>{val || '-'}</td>
-                                                        );
-                                                    })}
-                                                </tr>
-                                            ))}
-                                            <tr style={{ background: '#f8f9fa', fontWeight: '800' }}>
-                                                <td style={{
-                                                    position: 'sticky', left: 0, zIndex: 5,
-                                                    background: '#f8f9fa', padding: '15px 20px',
-                                                    borderTop: '2px solid #dee2e6', color: '#1a202c'
-                                                }}>รวมทั้งหมด</td>
-                                                <td style={{
-                                                    padding: '15px 20px', borderTop: '2px solid #dee2e6',
-                                                    textAlign: 'center', color: '#007bff'
-                                                }}>{summaryData.totalCalls}</td>
-                                                {summaryData.columnTotals.map((total, idx) => (
-                                                    <td key={idx} style={{
-                                                        padding: '15px 15px', borderTop: '2px solid #dee2e6',
-                                                        textAlign: 'center', color: total > 0 ? '#1a202c' : '#cbd5e0'
-                                                    }}>{total || '-'}</td>
-                                                ))}
+                                            {summaryData.flatRows.map((r) => {
+                                                const groupBg = r.matIdx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                                                return (
+                                                    <tr key={r.key} className="summary-row-hover" style={{ background: groupBg }}>
+                                                        {r.matRowSpan > 0 && (
+                                                            <>
+                                                                <td
+                                                                    rowSpan={r.matRowSpan}
+                                                                    style={{
+                                                                        padding: '5px 10px',
+                                                                        borderBottom: '1px solid #cbd5e1',
+                                                                        borderRight: '1px solid #e2e8f0',
+                                                                        fontWeight: 700,
+                                                                        color: '#0f172a',
+                                                                        background: r.matIdx % 2 === 0 ? '#f8fbff' : '#f1f5f9',
+                                                                        verticalAlign: 'middle',
+                                                                        whiteSpace: 'nowrap'
+                                                                    }}
+                                                                >
+                                                                    <div
+                                                                        style={{ cursor: 'pointer', textDecoration: 'underline', color: '#1d4ed8' }}
+                                                                        title="คลิกเพื่อนำรหัสไปคำนวณจัดสรรเบิก"
+                                                                        onClick={() => setAllocMaterial(r.material)}
+                                                                    >
+                                                                        {r.material}
+                                                                    </div>
+                                                                    {r.matRowSpan > 1 && (
+                                                                        <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#2563eb' }}>รวม {r.matTotalQty.toLocaleString()}</div>
+                                                                    )}
+                                                                </td>
+                                                                <td
+                                                                    rowSpan={r.matRowSpan}
+                                                                    style={{
+                                                                        padding: '5px 10px',
+                                                                        borderBottom: '1px solid #cbd5e1',
+                                                                        borderRight: '1px solid #e2e8f0',
+                                                                        color: '#334155',
+                                                                        verticalAlign: 'middle'
+                                                                    }}
+                                                                >
+                                                                    {r.description}
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                        <td style={{ padding: '5px 10px', borderBottom: '1px solid #edf2f7', borderRight: '1px solid #f1f5f9', fontWeight: 600, color: '#1e3a8a', whiteSpace: 'nowrap' }}>
+                                                            {r.teamPlant}
+                                                        </td>
+                                                        <td style={{ padding: '5px 10px', borderBottom: '1px solid #edf2f7', borderRight: '1px solid #f1f5f9', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' }}>
+                                                            {r.team}
+                                                        </td>
+                                                        <td style={{ padding: '5px 10px', borderBottom: '1px solid #edf2f7', borderRight: '1px solid #f1f5f9', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                                            {r.teamEngQty > 0 ? (
+                                                                <span
+                                                                    className="request-pill"
+                                                                    style={{ backgroundColor: '#fd7e14', color: '#fff', cursor: onEngClick ? 'pointer' : 'default' }}
+                                                                    title={r.teamEngTitle || `อะไหล่ในทีม ${r.team}`}
+                                                                    onClick={() => onEngClick?.(r.sampleRow)}
+                                                                >
+                                                                    {r.teamEngQty.toLocaleString()}
+                                                                </span>
+                                                            ) : (
+                                                                <span style={{ color: '#cbd5e1' }}>-</span>
+                                                            )}
+                                                        </td>
+                                                        <td style={{ padding: '5px 10px', borderBottom: '1px solid #edf2f7', textAlign: 'right', fontWeight: 800, color: '#1d4ed8', whiteSpace: 'nowrap' }}>
+                                                            {r.totalQty.toLocaleString()}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            <tr style={{ background: '#eff6ff', fontWeight: 800 }}>
+                                                <td colSpan={5} style={{ padding: '7px 10px', borderTop: '2px solid #93c5fd', textAlign: 'right', color: '#1e3a8a' }}>
+                                                    รวมทั้งหมด
+                                                </td>
+                                                <td style={{ padding: '7px 10px', borderTop: '2px solid #93c5fd', textAlign: 'right', color: '#1d4ed8', whiteSpace: 'nowrap' }}>
+                                                    {summaryData.grandTotalQty.toLocaleString()}
+                                                </td>
                                             </tr>
                                         </tbody>
                                     </table>
-                                </div>
-
-                                <div className="mobile-deck-list modal-deck-list" style={{ padding: '6px' }}>
-                                    {summaryData.sorted.map(({ tp, total }) => (
-                                        <div key={tp} className="mobile-deck-card">
-                                            <div className="deck-top">
-                                                <span className="deck-mat">{tp}</span>
-                                                <span className="deck-pill blue">รวม: {total}</span>
-                                            </div>
-                                            <div className="deck-pills">
-                                                {summaryData.statusCalls.map(status => {
-                                                    const val = summaryData.pivotData[tp]?.[status] || 0;
-                                                    if (!val) return null;
-                                                    return (
-                                                        <span
-                                                            key={status}
-                                                            className="deck-pill"
-                                                            style={{ backgroundColor: CHART_COLORS[status] || '#64748b' }}
-                                                        >
-                                                            {status}: {val}
-                                                        </span>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ))}
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -479,9 +858,6 @@ export function SummaryModal({ isOpen, onClose, data = [] }) {
                     .modal { position: static; background: none; }
                     .premium-modal-content { box-shadow: none; border: none; }
                     .premium-modal-header, .premium-modal-close { display: none; }
-                    .premium-table-container { box-shadow: none; border: 1px solid #ddd; }
-                    th { position: static !important; }
-                    td { position: static !important; }
                 }
             `}</style>
         </div>

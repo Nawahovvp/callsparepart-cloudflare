@@ -173,10 +173,29 @@ function App() {
       return statusX === 'แจ้งCodeผิด' || description === 'Code ผิด';
     };
 
+    const isEmptyDescRow = (row) => Boolean(row?._emptyDescMaterialCleared);
+
+    const hasValidRowForTicket = new Set();
+    allData.forEach(row => {
+      const ticket = String(row?.['Ticket Number'] || '').replace(/^'/, '').trim();
+      if (ticket && !isEmptyDescRow(row)) {
+        hasValidRowForTicket.add(ticket);
+      }
+    });
+
+    const seenEmptyOnlyTickets = new Set();
+
     return data
       .filter(row => {
         const ticket = String(row?.['Ticket Number'] || '').replace(/^'/, '').trim();
-        return !(ticketCounts.get(ticket) > 1 && isWrongCodeRow(row));
+        const count = ticketCounts.get(ticket) || 0;
+        if (count > 1 && isWrongCodeRow(row)) return false;
+        if (count > 1 && isEmptyDescRow(row)) {
+          if (hasValidRowForTicket.has(ticket)) return false;
+          if (seenEmptyOnlyTickets.has(ticket)) return false;
+          seenEmptyOnlyTickets.add(ticket);
+        }
+        return true;
       })
       .map(row => {
         const ticket = String(row?.['Ticket Number'] || '').replace(/^'/, '').trim();
@@ -792,7 +811,13 @@ function App() {
                     dashboardFilter={dashboardFilter}
                     gmFilter={gmFilter}
                     onTeamPlantChange={(v) => { setTeamPlantFilter(v); setCurrentPage(1); }}
-                    onPendingUnitChange={(v) => { setPendingUnitFilter(v); setCurrentPage(1); }}
+                    onPendingUnitChange={(v) => {
+                      setPendingUnitFilter(v);
+                      if (Array.isArray(v) && v.length === 0) {
+                        setDeptGroupFilter([]);
+                      }
+                      setCurrentPage(1);
+                    }}
                     onStockAnswerChange={(v) => { setStockAnswerFilter(v); setCurrentPage(1); }}
                     onCompanyChange={(v) => { setCompanyFilter(v); setCurrentPage(1); }}
                     onClearAllFilters={() => handleDashboardClick('total')}
@@ -905,7 +930,9 @@ function App() {
               <SummaryModal
                 isOpen
                 onClose={() => setSummaryOpen(false)}
-                data={data}
+                data={sortedData}
+                engData={engData}
+                onEngClick={handleEngClick}
               />
             )}
             {spareSummaryOpen && (

@@ -4268,6 +4268,34 @@
       text-align: center !important;
     }
 
+    .non-stock-unit-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 99px;
+      border: 1px solid transparent;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
+    .teamplant-mismatch-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 99px;
+      border: 1px solid #f87171;
+      background-color: #fef2f2;
+      color: #dc2626;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
     .cus-logo-img {
       width: 24px;
       height: 24px;
@@ -4995,7 +5023,7 @@
 
     .timeline-v-item {
       position: relative;
-      margin-bottom: 25px;
+      margin-bottom: 10px;
     }
 
     .timeline-v-dot {
@@ -5017,9 +5045,9 @@
 
     .timeline-v-card {
       background: var(--card-bg);
-      border-radius: 12px;
-      padding: 15px 20px;
-      margin-left: 10px;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-left: 8px;
       border: 1px solid var(--border-color);
       box-shadow: 0 2px 5px var(--shadow-color);
       transition: all 0.2s ease;
@@ -5033,13 +5061,13 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
+      margin-bottom: 6px;
+      padding-bottom: 5px;
       border-bottom: 1px dashed var(--border-color);
     }
 
     .timeline-v-date {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 700;
       color: var(--text-primary);
       display: flex;
@@ -5063,15 +5091,16 @@
 
     .timeline-v-meta {
       display: flex;
-      gap: 20px;
-      margin-bottom: 10px;
-      font-size: 13px;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      margin-bottom: 6px;
+      font-size: 12px;
     }
 
     .timeline-v-meta-item {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
 
     .timeline-v-label {
@@ -5085,14 +5114,14 @@
 
     .timeline-v-status {
       font-weight: 700;
-      font-size: 14px;
-      margin-bottom: 5px;
+      font-size: 13px;
+      margin-bottom: 3px;
     }
 
     .timeline-v-details {
-      font-size: 13.5px;
+      font-size: 12.5px;
       color: var(--text-primary);
-      line-height: 1.5;
+      line-height: 1.4;
     }
 
     .badge-pending {

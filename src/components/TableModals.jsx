@@ -980,93 +980,109 @@ export function TimelineModal({ isOpen, onClose, row }) {
                         </div>
                     </div>
 
-                    <div className="timeline-summary-strip" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', marginBottom: '20px', background: 'rgba(255,255,255,0.5)', padding: '10px', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
+                    <div className="timeline-summary-strip" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '6px', marginBottom: '12px', background: 'rgba(255,255,255,0.5)', padding: '8px', borderRadius: '10px', border: '1px dashed var(--border-color)' }}>
                         <div style={{ textAlign: 'center' }}>
                             <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>ผ่านมา</div>
-                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{formatElapsedDuration(row["DayRepair"])}</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '12.5px', fontWeight: 'bold' }}>{formatElapsedDuration(row["DayRepair"])}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Brand</div>
-                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Brand"] || "-"}</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '12.5px', fontWeight: 'bold' }}>{row["Brand"] || "-"}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Call Type</div>
-                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Call Type"] || "-"}</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '12.5px', fontWeight: 'bold' }}>{row["Call Type"] || "-"}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>นวนคร</div>
-                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Nawa"] || "-"}</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '12.5px', fontWeight: 'bold' }}>{row["Nawa"] || "-"}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>วิภาวดี</div>
-                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["Vipa"] || "-"}</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '12.5px', fontWeight: 'bold' }}>{row["Vipa"] || "-"}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div className="timeline-strip-label" style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>คลังพื้นที่</div>
-                            <div className="timeline-strip-val" style={{ fontSize: '13px', fontWeight: 'bold' }}>{row["QtyPlant"] || "-"}</div>
+                            <div className="timeline-strip-val" style={{ fontSize: '12.5px', fontWeight: 'bold' }}>{row["QtyPlant"] || "-"}</div>
                         </div>
                     </div>
 
-                    <h4 className="timeline-section-title" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}>
+                    <h4 className="timeline-section-title" style={{ marginBottom: '10px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
                         <i className="fas fa-stream"></i> ประวัติ Timeline
                     </h4>
 
-                    <div className="timeline-scroll-area" style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '10px' }}>
+                    <div className="timeline-scroll-area" style={{ maxHeight: '460px', overflowY: 'auto', paddingRight: '6px' }}>
                         <ul className="timeline-vertical">
                             {timelineRows.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)', background: 'var(--card-bg)', borderRadius: '12px' }}>
-                                    <i className="fas fa-ghost" style={{ fontSize: '30px', marginBottom: '10px', opacity: 0.3 }}></i>
+                                <div style={{ textAlign: 'center', padding: '28px', color: 'var(--text-secondary)', background: 'var(--card-bg)', borderRadius: '10px' }}>
+                                    <i className="fas fa-ghost" style={{ fontSize: '26px', marginBottom: '8px', opacity: 0.3 }}></i>
                                     <div>ไม่มีข้อมูล Timeline</div>
                                 </div>
                             ) : (
-                                timelineRows.map((tr, i) => (
-                                    <li key={i} className="timeline-v-item">
-                                        <div className="timeline-v-dot"></div>
-                                        <div className="timeline-v-card">
-                                            <div className="timeline-v-header">
-                                                <div className="timeline-v-date">
-                                                    <i className="far fa-calendar-alt"></i> วันที่ {tr.date || '-'}
+                                timelineRows.map((tr, i) => {
+                                    const hasPerson = Boolean(tr.person && String(tr.person).trim() !== '-');
+                                    const hasDisplayPending = Boolean(tr.displayPendingUnit && String(tr.displayPendingUnit).trim() !== '-');
+                                    const hasPendingUnit = Boolean(tr.pendingUnit && String(tr.pendingUnit).trim() !== '-');
+                                    const hasAnyMeta = hasPerson || hasDisplayPending || hasPendingUnit;
+                                    return (
+                                        <li key={i} className="timeline-v-item">
+                                            <div className="timeline-v-dot"></div>
+                                            <div className="timeline-v-card">
+                                                <div className="timeline-v-header">
+                                                    <div className="timeline-v-date">
+                                                        <i className="far fa-calendar-alt"></i> วันที่ {tr.date || '-'}
+                                                    </div>
+                                                    {tr.duration && (
+                                                        <div className="timeline-v-duration">
+                                                            ใช้เวลา {tr.duration} วัน
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                {tr.duration && (
-                                                    <div className="timeline-v-duration">
-                                                        ใช้เวลา {tr.duration} วัน
+
+                                                {hasAnyMeta && (
+                                                    <div className="timeline-v-meta">
+                                                        {hasPerson && (
+                                                            <div className="timeline-v-meta-item">
+                                                                <span className="timeline-v-label">ผู้แจ้ง:</span>
+                                                                <span className="timeline-v-value">{tr.person}</span>
+                                                            </div>
+                                                        )}
+                                                        {hasDisplayPending && (
+                                                            <div className="timeline-v-meta-item">
+                                                                <span className="timeline-v-label">ค้างหน่วยงาน:</span>
+                                                                <span className="timeline-v-value badge-pending">{tr.displayPendingUnit}</span>
+                                                            </div>
+                                                        )}
+                                                        {hasPendingUnit && (
+                                                            <div className="timeline-v-meta-item">
+                                                                <span className="timeline-v-label">แจ้งค้าง:</span>
+                                                                <span className="timeline-v-value badge-unit">{tr.pendingUnit}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {tr.status && String(tr.status).trim() !== '-' && (
+                                                    <div className="timeline-v-status">
+                                                        {tr.status}
+                                                    </div>
+                                                )}
+
+                                                {tr.details && (
+                                                    <div className="timeline-v-details">
+                                                        {tr.details}
                                                     </div>
                                                 )}
                                             </div>
-
-                                            <div className="timeline-v-meta">
-                                                <div className="timeline-v-meta-item">
-                                                    <span className="timeline-v-label">ผู้แจ้ง:</span>
-                                                    <span className="timeline-v-value">{tr.person || '-'}</span>
-                                                </div>
-                                                <div className="timeline-v-meta-item">
-                                                    <span className="timeline-v-label">ค้างหน่วยงาน:</span>
-                                                    <span className="timeline-v-value badge-pending">{tr.displayPendingUnit}</span>
-                                                </div>
-                                                <div className="timeline-v-meta-item">
-                                                    <span className="timeline-v-label">แจ้งค้าง:</span>
-                                                    <span className="timeline-v-value badge-unit">{tr.pendingUnit}</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="timeline-v-status">
-                                                {tr.status || '-'}
-                                            </div>
-
-                                            {tr.details && (
-                                                <div className="timeline-v-details">
-                                                    {tr.details}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </li>
-                                ))
+                                        </li>
+                                    );
+                                })
                             )}
                         </ul>
                     </div>
                 </div>
 
-                <div className="timeline-modal-footer" style={{ padding: '15px 25px', background: '#fff', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="timeline-modal-footer" style={{ padding: '10px 18px', background: '#fff', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div className="timeline-footer-meta" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                         <i className="fas fa-user-edit"></i> ผู้แจ้งผลล่าสุด: <strong>{row["UserAns"] || "-"}</strong> | แจ้งเมื่อ: <strong>{row["วันที่ตอบ"] || "-"}</strong>
                     </div>
