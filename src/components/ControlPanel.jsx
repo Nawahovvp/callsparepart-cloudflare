@@ -37,6 +37,8 @@ export default function ControlPanel({
     pendingUnitAllDone = {},
     userPendingUnit = ''
 }) {
+    const [showOtherPendingGroups, setShowOtherPendingGroups] = React.useState(false);
+
     const activeChips = [];
     if (companyFilter) activeChips.push({ key: 'cus', label: `ลูกค้า: ${getCusLogo(companyFilter)?.shortName || companyFilter}`, onClear: () => onCompanyChange?.('') });
     if (teamPlantFilter) activeChips.push({ key: 'tp', label: `ศูนย์พื้นที่: ${teamPlantFilter}`, onClear: () => onTeamPlantChange('') });
@@ -99,6 +101,65 @@ export default function ControlPanel({
             }));
     }, [sortedPendingUnits]);
 
+    const stockGroup = React.useMemo(
+        () => groupedPendingUnits.find((g) => g.key === 'Stock') || null,
+        [groupedPendingUnits]
+    );
+
+    const otherPendingGroups = React.useMemo(
+        () => groupedPendingUnits.filter((g) => g.key !== 'Stock'),
+        [groupedPendingUnits]
+    );
+
+    const otherGroupsTotal = React.useMemo(
+        () => otherPendingGroups.reduce((sum, g) => sum + g.total, 0),
+        [otherPendingGroups]
+    );
+
+    const renderPendingGroupBox = (group, isStock = false) => {
+        const tagStyle = GROUP_TAG_COLORS[group.key] || GROUP_TAG_COLORS['อื่นๆ'];
+        return (
+            <div
+                key={group.key}
+                className={`quick-unit-group-box ${isStock ? 'is-stock-box' : ''}`}
+            >
+                <span
+                    className="quick-unit-group-tag"
+                    style={{
+                        backgroundColor: tagStyle.bg,
+                        borderColor: tagStyle.border,
+                        color: tagStyle.color
+                    }}
+                    title={`กลุ่ม ${group.label} (${group.total})`}
+                >
+                    <span>{group.label}</span>
+                    <span className="quick-unit-group-total">{group.total}</span>
+                </span>
+                <div className="quick-unit-chips">
+                    {group.items.map(([key, count]) => {
+                        const isActive = selectedPendingUnits.includes(key);
+                        const isClear = pendingUnitAllDone?.[key] === true;
+                        const isUserUnit = Boolean(userPendingUnit && userPendingUnit === key);
+                        const displayLabel = String(key).replace(/^Stock\s*/i, '').trim() || key;
+                        return (
+                            <button
+                                key={key}
+                                type="button"
+                                className={`quick-unit-chip ${isActive ? 'active' : ''} ${isClear ? 'clear' : ''} ${isUserUnit ? 'is-user-unit' : ''}`}
+                                onClick={() => togglePendingUnit(key)}
+                                title={isUserUnit ? `หน่วยงานของคุณ (${key})` : `กรองค้างหน่วยงาน: ${key}`}
+                            >
+                                {isUserUnit && <i className="fas fa-user quick-unit-user-icon" aria-hidden="true"></i>}
+                                <span>{displayLabel}</span>
+                                <span className="quick-unit-count">{count}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div id="searchContainer" className="modern-search-bar">
             <div className="search-row-primary">
@@ -150,6 +211,20 @@ export default function ControlPanel({
             {sortedPendingUnits.length > 0 && (
                 <div className="quick-unit-bar" role="group" aria-label="ตัวกรองด่วน ค้างหน่วยงาน">
                     <div className="quick-unit-header-col">
+                        {stockGroup && otherPendingGroups.length > 0 && (
+                            <button
+                                type="button"
+                                className={`quick-unit-expand-btn ${showOtherPendingGroups ? 'expanded' : ''}`}
+                                onClick={() => setShowOtherPendingGroups((prev) => !prev)}
+                                title={showOtherPendingGroups
+                                    ? 'ซ่อนค้างหน่วยงานกลุ่มอื่น'
+                                    : `แสดงค้างหน่วยงานกลุ่มอื่นทั้งหมด (${otherPendingGroups.length} กลุ่ม • ${otherGroupsTotal})`}
+                                aria-expanded={showOtherPendingGroups}
+                                aria-label="แสดงหรือซ่อนค้างหน่วยงานกลุ่มอื่น"
+                            >
+                                <i className={`fas fa-chevron-${showOtherPendingGroups ? 'up' : 'down'}`} aria-hidden="true"></i>
+                            </button>
+                        )}
                         <span className="quick-unit-label">
                             <i className="fas fa-layer-group"></i>
                             <span>ค้างหน่วยงาน</span>
@@ -164,46 +239,9 @@ export default function ControlPanel({
                         </button>
                     </div>
                     <div className="quick-unit-groups-stack">
-                        {groupedPendingUnits.map((group) => {
-                            const tagStyle = GROUP_TAG_COLORS[group.key] || GROUP_TAG_COLORS['อื่นๆ'];
-                            return (
-                                <div key={group.key} className="quick-unit-group-row">
-                                    <span
-                                        className="quick-unit-group-tag"
-                                        style={{
-                                            backgroundColor: tagStyle.bg,
-                                            borderColor: tagStyle.border,
-                                            color: tagStyle.color
-                                        }}
-                                        title={`กลุ่ม ${group.label} (${group.total})`}
-                                    >
-                                        <span>{group.label}</span>
-                                        <span className="quick-unit-group-total">{group.total}</span>
-                                    </span>
-                                    <div className="quick-unit-chips">
-                                        {group.items.map(([key, count]) => {
-                                            const isActive = selectedPendingUnits.includes(key);
-                                            const isClear = pendingUnitAllDone?.[key] === true;
-                                            const isUserUnit = Boolean(userPendingUnit && userPendingUnit === key);
-                                            const displayLabel = String(key).replace(/^Stock\s*/i, '').trim() || key;
-                                            return (
-                                                <button
-                                                    key={key}
-                                                    type="button"
-                                                    className={`quick-unit-chip ${isActive ? 'active' : ''} ${isClear ? 'clear' : ''} ${isUserUnit ? 'is-user-unit' : ''}`}
-                                                    onClick={() => togglePendingUnit(key)}
-                                                    title={isUserUnit ? `หน่วยงานของคุณ (${key})` : `กรองค้างหน่วยงาน: ${key}`}
-                                                >
-                                                    {isUserUnit && <i className="fas fa-user quick-unit-user-icon" aria-hidden="true"></i>}
-                                                    <span>{displayLabel}</span>
-                                                    <span className="quick-unit-count">{count}</span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                        {stockGroup && renderPendingGroupBox(stockGroup, true)}
+                        {(showOtherPendingGroups || !stockGroup) &&
+                            otherPendingGroups.map((group) => renderPendingGroupBox(group, false))}
                     </div>
                 </div>
             )}

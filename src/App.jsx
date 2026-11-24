@@ -12,7 +12,7 @@ import DataTable from './components/DataTable';
 import RightMenuBar from './components/RightMenuBar';
 import { useAppData } from './hooks/useAppData';
 import { logoutUser } from './services/api';
-import { PLANT_MAPPING, DEFAULT_DEPT_GROUPS, exportToCSV } from './utils/helpers';
+import { PLANT_MAPPING, DEFAULT_DEPT_GROUPS, getTeamPlantCardKey, exportToCSV } from './utils/helpers';
 
 function getStoredUser() {
   const cachedUserStr = localStorage.getItem('user');
@@ -371,10 +371,22 @@ function App() {
       return;
     }
 
-    // Case 2c: TeamPlant Filter
+    // Case 2c: TeamPlant Filter (auto-select matching pending unit(s) while keeping all pending unit cards visible)
     if (filter.startsWith && filter.startsWith('teamplant_')) {
       const tpName = filter.replace('teamplant_', '');
-      setTeamPlantFilter(prev => prev === tpName ? '' : tpName);
+      if (teamPlantFilter === tpName) {
+        setTeamPlantFilter('');
+        setPendingUnitFilter([]);
+      } else {
+        setTeamPlantFilter(tpName);
+        const matchingUnits = Array.from(new Set(
+          allData
+            .filter(row => getTeamPlantCardKey(row["TeamPlant"]) === tpName)
+            .map(row => String(row["ค้างหน่วยงาน"] || "").trim())
+            .filter(unit => unit && getTeamPlantCardKey(unit) === tpName)
+        ));
+        setPendingUnitFilter(matchingUnits);
+      }
       return;
     }
 
@@ -725,6 +737,9 @@ function App() {
                       const entries = Object.entries(availableFilters?.teamPlant || {})
                         .filter(([, count]) => count > 0)
                         .sort((a, b) => b[1] - a[1]);
+                      if (teamPlantFilter && !entries.some(([label]) => label === teamPlantFilter)) {
+                        entries.unshift([teamPlantFilter, 0]);
+                      }
                       const total = entries.reduce((sum, [, count]) => sum + count, 0);
                       return entries.map(([label, value]) => ({
                         label,
@@ -735,6 +750,7 @@ function App() {
                     onCardClick={handleDashboardClick}
                     activeFilter={teamPlantFilter}
                     prefix="teamplant_"
+                    showZero={Boolean(teamPlantFilter)}
                     compact={true}
                   />
                 </div>

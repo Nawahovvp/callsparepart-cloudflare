@@ -258,6 +258,7 @@ export function useAppData(isLoggedIn = true) {
     // Base filter: applies TeamPlant, PendingUnit, StockAnswer, StatusCall, and Search
     // excludeType allows cross-filtering (skipping one filter to compute its options)
     const getFilteredData = useCallback((excludeType = null) => {
+        const isExcluded = (type) => (Array.isArray(excludeType) ? excludeType.includes(type) : excludeType === type);
         return processedData.filter(row => {
             if (!row) return false;
             const ticket = row["Ticket Number"];
@@ -267,9 +268,9 @@ export function useAppData(isLoggedIn = true) {
             const teamPlantCardKey = getTeamPlantCardKey(row["TeamPlant"]);
 
             // TeamPlant filter
-            if (excludeType !== 'teamPlant' && teamPlantFilter && teamPlantCardKey !== teamPlantFilter) return false;
+            if (!isExcluded('teamPlant') && teamPlantFilter && teamPlantCardKey !== teamPlantFilter) return false;
             // PendingUnit filter (supports multi-select)
-            if (excludeType !== 'pending') {
+            if (!isExcluded('pending')) {
                 const selectedPendingUnits = Array.isArray(pendingUnitFilter)
                     ? pendingUnitFilter
                     : (pendingUnitFilter ? [pendingUnitFilter] : []);
@@ -278,11 +279,11 @@ export function useAppData(isLoggedIn = true) {
                 }
             }
             // StockAnswer filter
-            if (excludeType !== 'stock' && stockAnswerFilter && (row["คลังตอบ"] || "") !== stockAnswerFilter) return false;
+            if (!isExcluded('stock') && stockAnswerFilter && (row["คลังตอบ"] || "") !== stockAnswerFilter) return false;
             // StatusCall filter (uses StatusX = row-level status, matching original)
-            if (excludeType !== 'status' && statusCallFilter && (row.StatusX || "") !== statusCallFilter) return false;
+            if (!isExcluded('status') && statusCallFilter && (row.StatusX || "") !== statusCallFilter) return false;
             // Company (Cus) filter
-            if (excludeType !== 'company' && companyFilter && String(row["Company"] || "").trim() !== companyFilter) return false;
+            if (!isExcluded('company') && companyFilter && String(row["Company"] || "").trim() !== companyFilter) return false;
 
             // Search term
             if (searchTerm) {
@@ -300,8 +301,12 @@ export function useAppData(isLoggedIn = true) {
                 if (!match) return false;
             }
 
-            if (excludeType !== 'gm' && gmFilter && row.GM !== gmFilter) return false;
-            if (excludeType !== 'dept' && !teamPlantFilter && deptGroupFilter && !matchesDeptGroup(row["ค้างหน่วยงาน"], deptGroupFilter)) return false;
+            const hasSelectedPendingUnit = Array.isArray(pendingUnitFilter)
+                ? pendingUnitFilter.length > 0
+                : Boolean(pendingUnitFilter);
+
+            if (!isExcluded('gm') && gmFilter && row.GM !== gmFilter) return false;
+            if (!isExcluded('dept') && !teamPlantFilter && !hasSelectedPendingUnit && deptGroupFilter && !matchesDeptGroup(row["ค้างหน่วยงาน"], deptGroupFilter)) return false;
 
             return true;
         });
@@ -364,8 +369,11 @@ export function useAppData(isLoggedIn = true) {
     }, [getFilteredData, baseFilteredData, applyDashboardFilter, dashboardFilter]);
 
     // Cross-filtered data for each filter panel
-    const teamPlantFilterData = useMemo(() => applyDashboardFilter(getFilteredData('teamPlant'), dashboardFilter), [getFilteredData, dashboardFilter, applyDashboardFilter]);
-    const pendingFilterData = useMemo(() => applyDashboardFilter(getFilteredData('pending'), dashboardFilter), [getFilteredData, dashboardFilter, applyDashboardFilter]);
+    const teamPlantFilterData = useMemo(
+        () => applyDashboardFilter(getFilteredData(teamPlantFilter ? null : 'teamPlant'), dashboardFilter),
+        [getFilteredData, teamPlantFilter, dashboardFilter, applyDashboardFilter]
+    );
+    const pendingFilterData = useMemo(() => applyDashboardFilter(getFilteredData(['pending', 'dept']), dashboardFilter), [getFilteredData, dashboardFilter, applyDashboardFilter]);
     const stockFilterData = useMemo(() => applyDashboardFilter(getFilteredData('stock'), dashboardFilter), [getFilteredData, dashboardFilter, applyDashboardFilter]);
     const statusFilterData = useMemo(() => applyDashboardFilter(getFilteredData('status'), dashboardFilter), [getFilteredData, dashboardFilter, applyDashboardFilter]);
     const companyFilterData = useMemo(() => applyDashboardFilter(getFilteredData('company'), dashboardFilter), [getFilteredData, dashboardFilter, applyDashboardFilter]);

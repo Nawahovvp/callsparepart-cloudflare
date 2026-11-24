@@ -4116,17 +4116,47 @@
     @media (max-width: 768px) {
       .app-header {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
+        gap: 10px;
       }
 
       .header-actions {
         width: 100%;
-        justify-content: flex-start;
+        display: grid;
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+        align-items: center;
+        justify-items: center;
+        gap: 6px;
+        padding-top: 8px;
+        border-top: 1px solid #eef2f7;
+      }
+
+      .header-actions #syncStatus:empty,
+      .header-actions #syncProgressText {
+        display: none !important;
+      }
+
+      .header-actions .header-icon-group {
+        display: contents;
+      }
+
+      .header-actions .header-refresh-btn.icon-only {
+        width: 100%;
+        max-width: 42px;
+        height: 34px;
+        border-radius: 9px !important;
+        font-size: 13px;
       }
 
       .header-button {
         padding: 9px 12px;
         font-size: 13px;
+      }
+    }
+
+    @media (max-width: 340px) {
+      .header-actions {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
       }
     }
 
@@ -6782,6 +6812,34 @@
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
+    padding-top: 3px;
+}
+
+.quick-unit-expand-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #2563eb;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.quick-unit-expand-btn:hover {
+    background: #dbeafe;
+    border-color: #60a5fa;
+}
+
+.quick-unit-expand-btn.expanded {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
 }
 
 .quick-unit-groups-stack {
@@ -6792,11 +6850,21 @@
     min-width: 0;
 }
 
-.quick-unit-group-row {
+.quick-unit-group-box {
     display: flex;
     align-items: flex-start;
     gap: 6px;
     min-width: 0;
+    padding: 5px 8px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.quick-unit-group-box.is-stock-box {
+    border: 1.5px solid #93c5fd;
+    background: #f0f7ff;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08);
 }
 
 .quick-unit-group-tag {
