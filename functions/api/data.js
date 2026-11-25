@@ -41,13 +41,24 @@ export function collectCallMaterials(rows) {
 
     rows.forEach(row => {
         const directMaterial = normalizeMaterial(row?.Material);
-        if (directMaterial) materials.add(directMaterial);
+        if (directMaterial) {
+            materials.add(directMaterial);
+            if (/^\d{1,7}$/.test(directMaterial)) {
+                materials.add('3' + directMaterial.padStart(7, '0'));
+            }
+        }
 
         const details = String(row?.['รายละเอียด'] || row?.TimeLine || '');
-        const labeledCode = details.match(/Material\s*Code\s*:\s*(\d+)/i)?.[1];
-        if (labeledCode?.length === 16) {
-            materials.add(labeledCode.slice(0, 8));
-            materials.add(labeledCode.slice(8));
+        for (const match of details.matchAll(/Material\s*Code\s*[:：]?\s*['\u200B\uFEFF\u00A0\s]*(\d(?:[^\S\r\n-]*\d){0,19})/gi)) {
+            const code = match[1].replace(/[^\d]+/g, '');
+            if (code.length === 16) {
+                materials.add(code.slice(0, 8));
+                materials.add(code.slice(8));
+            } else if (code.length === 8) {
+                materials.add(code);
+            } else if (code.length >= 1 && code.length <= 7) {
+                materials.add('3' + code.padStart(7, '0'));
+            }
         }
 
         for (const match of details.matchAll(/(?:^|\D)(300\d{5})(?!\d)/g)) {

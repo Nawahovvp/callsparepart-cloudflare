@@ -519,15 +519,83 @@ function cleanTimelineTextForQuantity(text) {
         .replace(/(?:ใช้\s*Code\s*นี้มี|ในคลังมี|คงเหลือ|สต๊อก|สต็อก|มีของ|มีอยู่|มี)\s*[\d,]+\s*(?:ชิ้น|อัน|ตัว|เส้น|ชุด|pcs?|ea)?/gi, ' ');
 }
 
+function splitTimelineEventsNewestFirst(details) {
+    const text = String(details || "").trim();
+    if (!text) return [];
+
+    const rawLines = text.split(/\||\r?\n/).map(s => s.trim()).filter(Boolean);
+    const merged = [];
+    for (const line of rawLines) {
+        const subEvents = line
+            .split(/(?=\b\d{2}\.\d{2}\s+\d{2}:\d{2}\b)/)
+            .map(s => s.trim())
+            .filter(Boolean);
+        for (const sub of subEvents) {
+            const hasLeadingDate = /^\d{2}\.\d{2}(?:\s|$)/.test(sub);
+            if (!hasLeadingDate && merged.length > 0) {
+                merged[merged.length - 1] += ' ' + sub;
+            } else {
+                merged.push(sub);
+            }
+        }
+    }
+
+    const today = new Date();
+    const withMeta = merged.map((eventText, order) => {
+        const m = eventText.match(/^(\d{2})\.(\d{2})(?:\s+(\d{2}):(\d{2}))?/);
+        let time = 0;
+        if (m) {
+            const day = Number(m[1]);
+            const month = Number(m[2]);
+            const hour = m[3] ? Number(m[3]) : 0;
+            const minute = m[4] ? Number(m[4]) : 0;
+            if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+                let year = today.getFullYear();
+                let d = new Date(year, month - 1, day, hour, minute);
+                if (d.getTime() > today.getTime() + (180 * 24 * 60 * 60 * 1000)) {
+                    year--;
+                    d = new Date(year, month - 1, day, hour, minute);
+                }
+                time = d.getTime();
+            }
+        }
+        return { eventText, time, order };
+    });
+
+    withMeta.sort((a, b) => {
+        if (a.time !== b.time) return b.time - a.time;
+        return b.order - a.order;
+    });
+
+    return withMeta.map(item => item.eventText);
+}
+
+function extractLatestPurchaseDescription(details) {
+    const eventsNewestFirst = splitTimelineEventsNewestFirst(details);
+    const latestEvent = eventsNewestFirst[0] || "";
+    if (!latestEvent) return "";
+
+    for (const match of latestEvent.matchAll(/ขอซื้อ[^\s•|]+/g)) {
+        const phrase = match[0].trim();
+        if (phrase && phrase !== 'ขอซื้อขอซ่อม') {
+            return phrase;
+        }
+    }
+    return "";
+}
+
 function extractQtyFromTimelineEvent(eventText) {
     if (!eventText || /ของเข้าแล้ว\s*แจ้งช่างเบิก/i.test(eventText)) return "";
-    const cleaned = cleanTimelineTextForQuantity(eventText);
+    // Remove 8-digit material codes (e.g. 30060014) and PO/PR numbers before matching standalone quantities
+    const cleaned = cleanTimelineTextForQuantity(eventText)
+        .replace(/(?:PO|PR)\s*\d+/gi, ' ')
+        .replace(/\b300\d{5}\b/g, ' ');
 
     const patterns = [
         /จำนวน\s*[:=]?\s*([\d,]+)/i,
         /เท่ากับ\s*([\d,]+)/i,
-        /=\s*(\d{1,3})\s*(?:ชิ้น|ตัว|อัน|เส้น|ชุด|กล่อง|คู่|แผง|แผ่น|ม้วน|ลูก|ใบ|หลอด|ขวด|ถุง|เมตร|pcs?|ea|set|unit)?(?!\d)/i,
-        /(\d{1,3})\s*(?:ชิ้น|ตัว|อัน|เส้น|ชุด|กล่อง|คู่|แผง|แผ่น|ม้วน|ลูก|ใบ|หลอด|ขวด|ถุง|เมตร|pcs?|ea|set|unit)(?![a-zA-Z0-9])/i,
+        /=\s*(\d{1,3})\s*(?:ชิ้น|ตัว|อัน|เส้น|ชุด|กล่อง|คู่|แผง|แผ่น|ม้วน|ลูก|ใบ|หลอด|ขวด|ถุง|เมตร|pcs?|ea|set|unit)?(?![\da-zA-Z\u0E00-\u0E7F])/i,
+        /(?:^|[^\d.])(\d{1,3})\s*(?:ชิ้น|ตัว|อัน|เส้น|ชุด|กล่อง|คู่|แผง|แผ่น|ม้วน|ลูก|ใบ|หลอด|ขวด|ถุง|เมตร|pcs?|ea|set|unit)(?![a-zA-Z0-9\u0E00-\u0E7F])/i,
         /(?:^|\s|[)\]])[xX×*]\s*(\d{1,3})(?!\d|\s*(?:mm|cm|m)\b)/
     ];
 
@@ -542,17 +610,12 @@ function extractQtyFromTimelineEvent(eventText) {
 }
 
 function extractTimelineQuantities(details) {
-    const text = String(details || "").trim();
-    if (!text) return { latestQty: "", byMaterial: new Map() };
-
-    const events = text
-        .split(/(?=\b\d{2}\.\d{2}\s+\d{2}:\d{2}\b)/)
-        .map(s => s.trim())
-        .filter(Boolean);
-    const orderedNewestFirst = events.length > 0 ? [...events].reverse() : [text];
+    const orderedNewestFirst = splitTimelineEventsNewestFirst(details);
+    if (orderedNewestFirst.length === 0) return { latestQty: "", byMaterial: new Map() };
 
     let latestQty = "";
     const byMaterial = new Map();
+    const replacementPairs = [];
 
     for (const eventText of orderedNewestFirst) {
         if (!latestQty) {
@@ -562,6 +625,15 @@ function extractTimelineQuantities(details) {
 
         if (/ของเข้าแล้ว\s*แจ้งช่างเบิก/i.test(eventText)) continue;
         const cleaned = cleanTimelineTextForQuantity(eventText);
+
+        // Capture replacement code relationships like "30060016 ใช้โค้ด 30053801 ... แทน"
+        const replaceMatches = cleaned.matchAll(
+            /(?:^|\D)(300\d{5})\s*(?:ใช้\s*(?:โค้ด|โคด|รหัส|code)?|เปลี่ยน(?:เป็น)?|แทน(?:ด้วย)?)\s*(?:โค้ด|โคด|รหัส|code)?\s*[:=]?\s*(300\d{5})(?!\d)/gi
+        );
+        for (const match of replaceMatches) {
+            replacementPairs.push([match[1], match[2]]);
+        }
+
         const matQtyMatches = cleaned.matchAll(
             /(?:^|\D)(300\d{5})\)?[^\S\r\n]*(?:(?:จำนวน\s*[:=]?|=|เท่ากับ|[xX×*])[^\S\r\n]*|[^\S\r\n]+)(\d{1,3})(?![\dMYmy]|[^\S\r\n]*(?:mm|cm|m)\b)/gi
         );
@@ -571,6 +643,15 @@ function extractTimelineQuantities(details) {
             if (valid && !byMaterial.has(matCode)) {
                 byMaterial.set(matCode, valid);
             }
+        }
+    }
+
+    // Propagate quantity from original material code to its replacement material code
+    for (const [oldMat, newMat] of replacementPairs) {
+        if (byMaterial.has(oldMat) && !byMaterial.has(newMat)) {
+            byMaterial.set(newMat, byMaterial.get(oldMat));
+        } else if (byMaterial.has(newMat) && !byMaterial.has(oldMat)) {
+            byMaterial.set(oldMat, byMaterial.get(newMat));
         }
     }
 
@@ -620,6 +701,7 @@ export function processRawData(
                 ? Math.max(0, Math.floor((Date.now() - parsedReplyDate.getTime()) / (1000 * 60 * 60 * 24)))
                 : 0;
             const details = String(row["รายละเอียด"] || row.TimeLine || "");
+            const latestPurchaseDescription = extractLatestPurchaseDescription(details);
             const timelineQuantities = extractTimelineQuantities(details);
             const detailQuantity = timelineQuantities.latestQty;
             const rawCallMaterialQuantity = [row["จำนวน"], row.Quantity].find(value =>
@@ -632,6 +714,7 @@ export function processRawData(
 
             return {
                 ...row,
+                Material: latestPurchaseDescription ? "" : row.Material,
                 DateTime: createDate,
                 DayRepair: elapsedDays,
                 Brand: row["Store Name"] || row.Brand,
@@ -642,25 +725,47 @@ export function processRawData(
                 "จำนวน": sanitizeCallQuantity(callMaterialQuantity || detailQuantity || "1"),
                 _callMaterialQuantity: callMaterialQuantity,
                 _quantitiesByMaterial: timelineQuantities.byMaterial,
+                _latestPurchaseDescription: latestPurchaseDescription,
                 PendingStockDays: pendingStockDays,
-                Description: description || (isCallMaterialRow ? "" : row.Description || row.Discription || row.Desc || "")
+                Description: latestPurchaseDescription || description || (isCallMaterialRow ? "" : row.Description || row.Discription || row.Desc || "")
             };
         }).flatMap(row => {
             if (!row) return [];
+            if (row._latestPurchaseDescription) {
+                return [{
+                    ...row,
+                    Material: "",
+                    Description: row._latestPurchaseDescription
+                }];
+            }
             const currentMaterial = normalizeMaterial(row.Material);
             const details = String(row["รายละเอียด"] || row.TimeLine || "");
-            const labeledCode = details.match(/Material\s*Code\s*:\s*(\d+)/i)?.[1];
+            const labeledCodes = [...details.matchAll(/Material\s*Code\s*[:：]?\s*['\u200B\uFEFF\u00A0\s]*(\d(?:[^\S\r\n-]*\d){0,19})/gi)]
+                .map(match => match[1].replace(/[^\d]+/g, ''));
+            const labeledMaterials = [];
+            for (const code of labeledCodes) {
+                if (code.length === 16) {
+                    // CallMaterial may concatenate two 8-digit material codes after this label.
+                    labeledMaterials.push(code.slice(0, 8), code.slice(8));
+                } else if (code.length === 8) {
+                    labeledMaterials.push(code);
+                } else if (code.length >= 1 && code.length <= 7) {
+                    // Pad short numeric Material Code values to 8 digits starting with 3
+                    // e.g. 57019 -> 30057019, 2524 -> 30002524, 327 -> 30000327
+                    labeledMaterials.push('3' + code.padStart(7, '0'));
+                }
+            }
             const quantitiesByMaterial = row._quantitiesByMaterial instanceof Map ? row._quantitiesByMaterial : new Map();
             let materials = [];
 
             if (currentMaterial && currentMaterial !== "-") {
-                materials.push(currentMaterial);
+                const paddedCurrent = /^\d{1,7}$/.test(currentMaterial) ? ('3' + currentMaterial.padStart(7, '0')) : '';
+                if (!paddedCurrent || !labeledMaterials.includes(paddedCurrent)) {
+                    materials.push(currentMaterial);
+                }
             }
 
-            // CallMaterial may concatenate two 8-digit material codes after this label.
-            if (labeledCode?.length === 16) {
-                materials.push(labeledCode.slice(0, 8), labeledCode.slice(8));
-            }
+            materials.push(...labeledMaterials);
             // Also include other 300xxxxx codes listed in details, even when the row
             // already has a Material. Repeated history entries collapse below.
             const detailMaterials = [...details.matchAll(/(?:^|\D)(300\d{5})(?!\d)/g)].map(match => match[1]);
@@ -671,7 +776,7 @@ export function processRawData(
             return uniqueMaterials.map(Material => ({
                 ...row,
                 Material,
-                Description: labeledCode?.length === 16 || detailMaterials.length ? "" : row.Description,
+                Description: labeledMaterials.length || detailMaterials.length ? "" : row.Description,
                 "จำนวน": sanitizeCallQuantity(
                     row._callMaterialQuantity !== ""
                         ? row._callMaterialQuantity
@@ -801,6 +906,8 @@ export function processRawData(
     const enrichedData = dedupedMainData.map(row => {
         let r = { ...row, id: row['Ticket Number'] + '_' + row['Material'] };
         delete r._callMaterialQuantity;
+        delete r._quantitiesByMaterial;
+        delete r._latestPurchaseDescription;
         const mat = normalizeMaterial(r["Material"]);
         if (!r["Description"] && mat) {
             const sapMaterial = mainSapMap.get(mat);
@@ -920,7 +1027,9 @@ export function processRawData(
             const op = r["OtherPlant"];
             const hasOtherPlant = op !== undefined && op !== null && op !== "" && op !== "-" && op !== 0 && op !== "0";
 
-            if (hasQtyPlant) {
+            if (rebuiltPlantQty > 0) {
+                r.TempStatusX = "เบิกทดแทน";
+            } else if (hasQtyPlant) {
                 r.TempStatusX = "ระหว่างขนส่ง";
             } else if (hasNawa) {
                 r.TempStatusX = "เบิกนวนคร";
@@ -928,8 +1037,6 @@ export function processRawData(
                 r.TempStatusX = "เกินLeadtime";
             } else if (r["hasMatchingEngTeam"]) {
                 r.TempStatusX = "มีอะไหล่ในทีม";
-            } else if (rebuiltPlantQty > 0) {
-                r.TempStatusX = "เบิกทดแทน";
             } else if (hasVipa) {
                 r.TempStatusX = "เบิกวิภาวดี";
             } else if (hasOtherPlant) {
@@ -996,7 +1103,9 @@ export function processRawData(
 
         const hasHighPriority = rows.some(r => HIGH_PRIORITY_STATUSES.includes(r.StatusX));
 
-        if (projectMap.has(ticket) && !hasHighPriority) {
+        if (statusesToEval.includes("เบิกทดแทน")) {
+            statusCall = "เบิกทดแทน";
+        } else if (projectMap.has(ticket) && !hasHighPriority) {
             const proj = projectMap.get(ticket);
             if (proj.statusCall) {
                 statusCall = proj.statusCall === "Project" ? "SPACIAL" : proj.statusCall;
@@ -1016,8 +1125,6 @@ export function processRawData(
             statusCall = "เกินLeadtime";
         } else if (statusesToEval.includes("มีอะไหล่ในทีม")) {
             statusCall = "มีอะไหล่ในทีม";
-        } else if (statusesToEval.includes("เบิกทดแทน")) {
-            statusCall = "เบิกทดแทน";
         } else if (validStatuses.length > 0 && validStatuses.every(s => s === "ดึงจากคลังอื่น")) {
             statusCall = "ดึงจากคลังอื่น";
         } else if (statusesToEval.includes("รอของเข้า") || statusesToEval.includes("ดึงจากคลังอื่น")) {
@@ -1060,7 +1167,7 @@ export function processRawData(
 
     // 5. Override StatusX for mismatch: ค้างหน่วยงาน = "Stock วิภาวดี 62" but ศูนย์พื้นที่ ≠ "วิภาวดี 62"
     enrichedData.forEach(r => {
-        if (r.StatusX === "แจ้งCodeผิด") return;
+        if (r.StatusX === "แจ้งCodeผิด" || r.StatusX === "เบิกทดแทน" || r.StatusCall === "เบิกทดแทน") return;
         const pending = (r["ค้างหน่วยงาน"] || "").trim();
         const tp = (r["TeamPlant"] || r["ศูนย์พื้นที่"] || "").replace(/Stock\s*/gi, '').trim();
         const mat = (r["Material"] || "").toString().trim();
